@@ -1,0 +1,11 @@
+{
+    "java.project.sourcePaths": ["src"],
+    "java.project.outputPath": "out",
+    "java.project.referencedLibraries": [],
+    "java.settings.url": ".vscode/java.prefs",
+    "files.encoding": "utf8",
+    "files.exclude": {
+        "out": true,
+        "**/*.class": true
+    }
+}

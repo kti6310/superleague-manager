@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "게임 실행",
+            "request": "launch",
+            "mainClass": "superleague.Main",
+            "vmArgs": "-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8",
+            "console": "internalConsole"
+        },
+        {
+            "type": "java",
+            "name": "웹 버전 실행",
+            "request": "launch",
+            "mainClass": "superleague.Main",
+            "args": ["--web"],
+            "vmArgs": "-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8",
+            "console": "internalConsole"
+        },
+        {
+            "type": "java",
+            "name": "콘솔 자동 시즌 (테스트)",
+            "request": "launch",
+            "mainClass": "superleague.Main",
+            "args": ["--auto", "--team", "1", "--seed", "42"],
+            "vmArgs": "-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8",
+            "console": "integratedTerminal"
+        }
+    ]
+}

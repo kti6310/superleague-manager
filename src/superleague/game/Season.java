@@ -57,6 +57,7 @@ public class Season {
         this.schedule = ScheduleGenerator.doubleRoundRobin(teams, random);
         this.engine = new MatchEngine(random);
         this.events = new RandomEvents(random);
+        motivate();
         Tactic[] styles = Tactic.values();
         for (Team team : teams) {
             team.setPreferredTactic(styles[random.nextInt(styles.length)]);
@@ -147,7 +148,14 @@ public class Season {
         plan.clear();
         pendingReview = null;
         today = dateOfRound(0).minusDays(7);
+        motivate();
         return news;
+    }
+
+    private void motivate() {
+        if (userTeam.managerStyle() == superleague.model.ManagerStyle.MOTIVATOR) {
+            userTeam.changeMorale(10);
+        }
     }
 
     public int roundOn(LocalDate date) {
@@ -233,6 +241,9 @@ public class Season {
         }
         if (team.trainingBoostRounds() > 0 && training > 0) {
             training *= 1.5;
+        }
+        if (team.managerStyle() == superleague.model.ManagerStyle.SYSTEM_BUILDER && training > 0) {
+            training *= 1.3;
         }
         team.changeTraining(randomRound(training));
         team.changeMorale(randomRound(morale));
@@ -342,7 +353,8 @@ public class Season {
             }
             List<String> grown = new ArrayList<>();
             for (Player p : team.squad()) {
-                double boost = team.trainingBoostRounds() > 0 ? 1.5 : 1.0;
+                double boost = (team.trainingBoostRounds() > 0 ? 1.5 : 1.0)
+                        * (team.managerStyle() == superleague.model.ManagerStyle.DEVELOPER ? 1.4 : 1.0);
                 if (random.nextDouble() < p.growthChance(team.training()) * boost) {
                     p.grow();
                     grown.add(String.format("%s %d", p.name(), p.rating()));
@@ -454,6 +466,9 @@ public class Season {
             } else if (scored == conceded) {
                 delta += 4;
             }
+        }
+        if (delta < 0 && team.managerStyle() == superleague.model.ManagerStyle.MOTIVATOR) {
+            delta = (int) Math.round(delta * 0.6);
         }
         team.changeMorale(delta);
     }

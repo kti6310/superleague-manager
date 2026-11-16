@@ -27,6 +27,8 @@ public class Team {
     private Player[] lineup = new Player[11];
     private final Instructions instructions = new Instructions();
     private boolean autoLineup = true;
+    private String managerName;
+    private ManagerStyle managerStyle;
 
     private int played;
     private int won;
@@ -384,10 +386,42 @@ public class Team {
     }
 
     public double chemistryModifier() {
-        return Math.min(0.03, 0.0015 * nationalityPairs()) + (teamworkRounds > 0 ? TEAMWORK_BONUS : 0);
+        return Math.min(0.03, 0.0015 * nationalityPairs()) + (teamworkRounds > 0 ? TEAMWORK_BONUS : 0)
+                + (managerStyle == ManagerStyle.SYSTEM_BUILDER ? 0.015 : 0);
     }
 
     public static final double TEAMWORK_BONUS = 0.03;
+
+    public void setManager(String name, ManagerStyle style) {
+        managerName = name;
+        managerStyle = style;
+    }
+
+    public String managerName() {
+        return managerName;
+    }
+
+    public ManagerStyle managerStyle() {
+        return managerStyle;
+    }
+
+    public double managerAttackFactor(Team opponent) {
+        if (managerStyle == ManagerStyle.TACTICIAN && opponent.tier().isHigherThan(tier)) {
+            return 1.07;
+        }
+        return managerStyle == ManagerStyle.PRAGMATIST ? 0.98 : 1;
+    }
+
+    public double managerConcedeFactor(Team opponent) {
+        if (managerStyle == ManagerStyle.TACTICIAN && opponent.tier().isHigherThan(tier)) {
+            return 0.93;
+        }
+        return managerStyle == ManagerStyle.PRAGMATIST ? 0.94 : 1;
+    }
+
+    public double counterBonusExtra() {
+        return managerStyle == ManagerStyle.STRATEGIST ? 0.15 : 0;
+    }
     private int teamworkRounds;
     private int trainingBoostRounds;
 

@@ -47,7 +47,7 @@ class StartPanel extends JPanel {
         header.setBackground(Theme.NAVY);
         header.setBorder(BorderFactory.createEmptyBorder(28, 32, 24, 32));
         JLabel title = Theme.label("SUPER LEAGUE MANAGER", Font.BOLD, 28, Color.WHITE);
-        JLabel subtitle = Theme.label("슈퍼리그 18개 구단 중 한 팀을 맡아 34라운드 한 시즌을 지휘하세요.",
+        JLabel subtitle = Theme.label("슈퍼리그 18개 구단 중 한 팀을 맡아 5시즌 동안 지휘하세요.",
                 Font.PLAIN, 14, Theme.ON_DARK_MUTED);
         header.add(title);
         header.add(javax.swing.Box.createVerticalStrut(6));

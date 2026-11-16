@@ -42,18 +42,20 @@ public class MatchEngine {
                 * home.instructions().attackFactor() * away.instructions().concedeFactor()
                 * aerialFactor(home, away)
                 * home.dutyAttackFactor() * away.dutyConcedeFactor()
-                * (1 + home.teamTraining().attack / 100) * (1 - away.teamTraining().defense / 100);
+                * (1 + home.teamTraining().attack / 100) * (1 - away.teamTraining().defense / 100)
+                * home.managerAttackFactor(away) * away.managerConcedeFactor(home);
         double awayExpected = BASE_GOALS * Math.pow(awayPower / homePower, STRENGTH_EXPONENT)
                 * away.tactic().attackFactor() * home.tactic().concedeFactor()
                 * away.instructions().attackFactor() * home.instructions().concedeFactor()
                 * aerialFactor(away, home)
                 * away.dutyAttackFactor() * home.dutyConcedeFactor()
-                * (1 + away.teamTraining().attack / 100) * (1 - home.teamTraining().defense / 100);
+                * (1 + away.teamTraining().attack / 100) * (1 - home.teamTraining().defense / 100)
+                * away.managerAttackFactor(home) * home.managerConcedeFactor(away);
 
         if (home.tactic().counters(away.tactic())) {
-            homeExpected *= COUNTER_BONUS;
+            homeExpected *= COUNTER_BONUS + home.counterBonusExtra();
         } else if (away.tactic().counters(home.tactic())) {
-            awayExpected *= COUNTER_BONUS;
+            awayExpected *= COUNTER_BONUS + away.counterBonusExtra();
         }
 
         double frac = Commentary.remainingFraction(cut);

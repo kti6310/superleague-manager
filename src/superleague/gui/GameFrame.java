@@ -8,14 +8,18 @@ import javax.swing.SwingUtilities;
 import superleague.data.SquadLoader;
 import superleague.data.TeamData;
 import superleague.game.Season;
+import superleague.model.ManagerStyle;
 import superleague.model.Team;
 
 public class GameFrame extends JFrame {
+    private String managerName;
+    private ManagerStyle managerStyle;
 
     public GameFrame() {
         super("Super League Manager");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1180, 760));
+        setIconImage(Logo.icon(64));
         showStart();
         setLocationRelativeTo(null);
     }
@@ -28,7 +32,19 @@ public class GameFrame extends JFrame {
     }
 
     private void showStart() {
-        setContentPane(new StartPanel(this::startGame));
+        show(new TitlePanel(this::showProfile));
+    }
+
+    private void showProfile() {
+        show(new ManagerPanel((name, style) -> {
+            managerName = name;
+            managerStyle = style;
+            show(new StartPanel(this::startGame));
+        }, this::showStart));
+    }
+
+    private void show(java.awt.Container panel) {
+        setContentPane(panel);
         revalidate();
         repaint();
     }
@@ -40,6 +56,7 @@ public class GameFrame extends JFrame {
         if (!data.warnings().isEmpty()) {
             showWarnings(data);
         }
+        teams.get(teamIndex).setManager(managerName, managerStyle);
         Season season = new Season(teams, teams.get(teamIndex), random);
         setContentPane(new GamePanel(season, data, this::showStart));
         revalidate();

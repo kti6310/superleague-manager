@@ -1,0 +1,59 @@
+package superleague.gui;
+
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagLayout;
+import java.awt.Component;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
+class TitlePanel extends JPanel {
+
+    TitlePanel(Runnable onNewGame) {
+        super(new GridBagLayout());
+        JPanel column = new JPanel();
+        column.setOpaque(false);
+        column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
+
+        Logo logo = new Logo();
+        logo.setAlignmentX(Component.CENTER_ALIGNMENT);
+        column.add(logo);
+        column.add(Box.createVerticalStrut(8));
+        JLabel tagline = Theme.label("18개 구단 · 34라운드 · 5시즌. 당신의 축구 철학을 증명하세요.",
+                Font.PLAIN, 15, Theme.ON_DARK_MUTED);
+        tagline.setAlignmentX(Component.CENTER_ALIGNMENT);
+        column.add(tagline);
+        column.add(Box.createVerticalStrut(36));
+
+        JButton start = Theme.primaryButton("새 게임 시작");
+        start.setFont(Theme.font(Font.BOLD, 16));
+        start.setAlignmentX(Component.CENTER_ALIGNMENT);
+        start.addActionListener(e -> onNewGame.run());
+        column.add(start);
+        column.add(Box.createVerticalStrut(12));
+        JButton quit = Theme.secondaryButton("종료");
+        quit.setAlignmentX(Component.CENTER_ALIGNMENT);
+        quit.addActionListener(e -> System.exit(0));
+        column.add(quit);
+        add(column);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setPaint(new GradientPaint(0, 0, Theme.NAVY_LIGHT, 0, getHeight(), Theme.NAVY));
+        g2.fillRect(0, 0, getWidth(), getHeight());
+        g2.setColor(new Color(255, 255, 255, 14));
+        int cx = getWidth() / 2;
+        int cy = getHeight() / 2;
+        g2.drawOval(cx - 260, cy - 260, 520, 520);
+        g2.drawLine(cx, 0, cx, getHeight());
+        g2.dispose();
+    }
+}

@@ -98,8 +98,12 @@ class GamePanel extends JPanel {
         add(buildSidebar(), BorderLayout.WEST);
         add(buildTabs(), BorderLayout.CENTER);
 
-        log(String.format("%s 감독으로 부임했습니다. 운영진 목표는 %d위 이내입니다.",
+        log(String.format("%s%s 감독으로 부임했습니다. 운영진 목표는 %d위 이내입니다.",
+                team.managerName() == null ? "" : team.managerName() + "(" + team.managerStyle().label + ") 님이 ",
                 team.name(), team.tier().targetRank()));
+        if (team.managerStyle() != null) {
+            log("[코칭 스타일] " + team.managerStyle().label + ": " + team.managerStyle().effect);
+        }
         log(String.format("총 %d시즌을 치릅니다. 3경기마다 구단주 평가, 17라운드 후 중간 평가, 34라운드 후 시즌 종료 평가가 있습니다.",
                 Season.MAX_SEASONS));
         log("[선수 데이터] " + data.summary());
@@ -121,6 +125,10 @@ class GamePanel extends JPanel {
         nameRow.add(teamName);
         nameRow.add(Box.createHorizontalStrut(10));
         nameRow.add(tierChip);
+        if (team.managerStyle() != null) {
+            nameRow.add(Box.createHorizontalStrut(8));
+            nameRow.add(new Widgets.Chip(team.managerName() + " 감독 · " + team.managerStyle().label, Logo.GOLD.darker()));
+        }
 
         JPanel left = new JPanel();
         left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));

@@ -1,7 +1,5 @@
 package superleague.model;
 
-import java.util.Map;
-
 public enum Role {
     GK(Position.GK, "골키퍼"),
     CB(Position.DF, "센터백"),
@@ -18,16 +16,6 @@ public enum Role {
     CF(Position.FW, "센터 포워드"),
     LW(Position.FW, "왼쪽 윙어"),
     RW(Position.FW, "오른쪽 윙어");
-
-    private static final Map<String, Double> AFFINITY = Map.ofEntries(
-            pair(CB, LB, 0.88), pair(CB, RB, 0.88), pair(LB, RB, 0.93),
-            pair(LB, LWB, 0.97), pair(RB, RWB, 0.97), pair(LWB, RWB, 0.92),
-            pair(LB, RWB, 0.90), pair(RB, LWB, 0.90), pair(CB, LWB, 0.84), pair(CB, RWB, 0.84),
-            pair(DM, CM, 0.95), pair(CM, AM, 0.94), pair(DM, AM, 0.87),
-            pair(LM, RM, 0.94), pair(CM, LM, 0.90), pair(CM, RM, 0.90),
-            pair(AM, LM, 0.93), pair(AM, RM, 0.93), pair(DM, LM, 0.85), pair(DM, RM, 0.85),
-            pair(ST, CF, 0.96), pair(LW, RW, 0.95),
-            pair(ST, LW, 0.89), pair(ST, RW, 0.89), pair(CF, LW, 0.91), pair(CF, RW, 0.91));
 
     private final Position group;
     private final String description;
@@ -87,13 +75,5 @@ public enum Role {
             case "RW" -> RW;
             default -> null;
         };
-    }
-
-    private static Map.Entry<String, Double> pair(Role a, Role b, double v) {
-        return Map.entry(key(a, b), v);
-    }
-
-    private static String key(Role a, Role b) {
-        return a.ordinal() < b.ordinal() ? a.name() + "-" + b.name() : b.name() + "-" + a.name();
     }
 }

@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Super League Manager · 프로젝트 소개</title>
+<style>
+  :root {
+    --bg: #f7f8fb;
+    --card: #ffffff;
+    --ink: #142036;
+    --muted: #5b6b82;
+    --line: #e3e8f0;
+    --navy: #13285c;
+    --blue: #2563eb;
+    --blue-soft: #e8efff;
+    --gold: #e0a92e;
+    --gold-soft: #fff6e0;
+    --green: #16a34a;
+    --green-soft: #e6f6ec;
+    --red: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  header.hero {
+    background: linear-gradient(180deg, #ffffff 0%, #eef3ff 100%);
+    border-bottom: 1px solid var(--line);
+    padding: 56px 0 44px;
+  }
+  .hero-grid { display: flex; align-items: center; gap: 36px; }
+  .hero svg { flex: none; width: 128px; height: 128px; }
+  .eyebrow { color: var(--blue); font-weight: 700; letter-spacing: .08em; font-size: 13px; text-transform: uppercase; }
+  h1 { margin: 6px 0 8px; font-size: 44px; line-height: 1.1; letter-spacing: -.02em; }
+  h1 .gold { color: var(--gold); }
+  .lead { font-size: 18px; color: var(--muted); margin: 0 0 18px; max-width: 640px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 600; color: var(--navy); }
+  section { padding: 44px 0 8px; }
+  h2 { font-size: 26px; margin: 0 0 6px; letter-spacing: -.01em; }
+  h2 .num { color: var(--blue); margin-right: 10px; font-variant-numeric: tabular-nums; }
+  .sub { color: var(--muted); margin: 0 0 22px; }
+  .grid { display: grid; gap: 16px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
+  .card h3 { margin: 0 0 6px; font-size: 17px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+  .card ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 14.5px; }
+  .card li { margin: 2px 0; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-bottom: 8px; }
+  .t-blue { background: var(--blue-soft); color: var(--blue); }
+  .t-gold { background: var(--gold-soft); color: #a26b00; }
+  .t-green { background: var(--green-soft); color: var(--green); }
+  .stat { text-align: center; padding: 22px 12px; }
+  .stat b { display: block; font-size: 34px; color: var(--navy); line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: 13.5px; }
+  .flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+  .step { flex: 1 1 140px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 12px; position: relative; margin: 6px 18px 6px 0; }
+  .step:not(:last-child)::after { content: "›"; position: absolute; right: -15px; top: 50%; transform: translateY(-50%); color: var(--blue); font-size: 22px; font-weight: 700; }
+  .step small { color: var(--blue); font-weight: 700; font-size: 12px; }
+  .step strong { display: block; font-size: 16px; margin: 2px 0; }
+  .step p { margin: 0; font-size: 13px; color: var(--muted); }
+  .step.final { background: var(--gold-soft); border-color: #f1d48a; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f1f4f9; color: var(--muted); font-weight: 700; font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 700; white-space: nowrap; color: var(--navy); }
+  .bars .row { display: grid; grid-template-columns: 70px 1fr 220px; align-items: center; gap: 12px; margin: 8px 0; font-size: 14px; }
+  .bars .name { font-weight: 700; font-family: ui-monospace, Consolas, monospace; color: var(--navy); }
+  .bars .bar { height: 12px; background: #eef2f8; border-radius: 6px; overflow: hidden; }
+  .bars .bar i { display: block; height: 100%; background: var(--blue); border-radius: 6px; }
+  .bars .desc { color: var(--muted); font-size: 13px; }
+  .formula { font-family: ui-monospace, Consolas, monospace; background: #f1f4f9; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--navy); margin-top: 10px; }
+  .check li::marker { content: "✓  "; color: var(--green); font-weight: 700; }
+  footer { margin: 48px 0 0; padding: 26px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  @media (max-width: 820px) {
+    .g3, .g4 { grid-template-columns: repeat(2, 1fr); }
+    .g2 { grid-template-columns: 1fr; }
+    .hero-grid { flex-direction: column; align-items: flex-start; }
+    h1 { font-size: 34px; }
+    .bars .row { grid-template-columns: 60px 1fr; }
+    .bars .desc { grid-column: 1 / -1; }
+  }
+  @media print {
+    body { background: #fff; }
+    section { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <svg viewBox="0 0 100 100" aria-label="Super League Manager 엠블럼">
+      <defs>
+        <linearGradient id="sh" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2563eb"/><stop offset="1" stop-color="#13285c"/>
+        </linearGradient>
+      </defs>
+      <path d="M10 8 H90 V52 C90 78 64 92 50 99 C36 92 10 78 10 52 Z" fill="url(#sh)" stroke="#e0a92e" stroke-width="4"/>
+      <circle cx="50" cy="55" r="22" fill="#fff" stroke="#b8862b" stroke-width="1.5"/>
+      <polygon points="50,45.8 58.7,52.2 55.4,62.4 44.6,62.4 41.3,52.2" fill="#13285c"/>
+      <g stroke="#13285c" stroke-width="1.6">
+        <line x1="50" y1="45.8" x2="50" y2="33"/><line x1="58.7" y1="52.2" x2="70.9" y2="48.2"/>
+        <line x1="55.4" y1="62.4" x2="62.9" y2="72.8"/><line x1="44.6" y1="62.4" x2="37.1" y2="72.8"/>
+        <line x1="41.3" y1="52.2" x2="29.1" y2="48.2"/>
+      </g>
+      <polygon points="50,15 51.9,19.4 56.7,19.8 53,22.9 54.1,27.6 50,25.1 45.9,27.6 47,22.9 43.3,19.8 48.1,19.4" fill="#e0a92e"/>
+    </svg>
+    <div>
+      <div class="eyebrow">기말고사 대체 프로젝트</div>
+      <h1>SUPER LEAGUE <span class="gold">MANAGER</span></h1>
+      <p class="lead">가상의 유럽 슈퍼리그에서 감독이 되어 5시즌 동안 팀을 이끄는 축구 감독 시뮬레이션 게임</p>
+      <div class="chips">
+        <span class="chip">Java 17</span><span class="chip">Swing GUI</span><span class="chip">외부 라이브러리 0개</span>
+        <span class="chip">63개 클래스 · 약 10,300줄</span><span class="chip">Git · GitHub</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2><span class="num">01</span>프로젝트 목표</h2>
+    <p class="sub">Football Manager 같은 시뮬레이션의 재미를 살리되, 기존 게임과 다른 구조로 차별성을 만드는 것</p>
+    <div class="grid g3">
+      <div class="card">
+        <span class="tag t-blue">구현</span>
+        <h3>감독 시뮬레이션의 핵심 루프</h3>
+        <p>훈련 → 전술 결정 → 경기 → 평가 → 성장으로 이어지는 흐름을 하루 단위 일정 위에서 구현</p>
+      </div>
+      <div class="card">
+        <span class="tag t-gold">차별성</span>
+        <h3>"슈퍼리그"라는 가상 무대</h3>
+        <p>유럽 빅클럽 18팀이 모인 가상 리그에 미국식 디비전과 포스트시즌을 결합한 새로운 시즌 구조</p>
+      </div>
+      <div class="card">
+        <span class="tag t-green">설계</span>
+        <h3>객체지향 구조와 검증</h3>
+        <p>모델·엔진·게임 규칙·화면을 패키지로 분리하고, 수백 시즌 자동 시뮬레이션으로 밸런스 검증</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>기존 게임과 다른 점</h2>
+    <p class="sub">FM·FC 온라인 같은 게임에 없는, 이 프로젝트만의 요소</p>
+    <div class="grid g2">
+      <div class="card">
+        <h3>디비전 + 포스트시즌 시즌 구조</h3>
+        <p>단일 리그 대신 9팀씩 두 조로 나눈 정규 시즌, 이어서 플레이오프·8강·4강·중립 구장 결승. 시즌 끝까지 긴장감 유지</p>
+      </div>
+      <div class="card">
+        <h3>전력 균형 조 추첨식</h3>
+        <p>무작위지만 두 조의 전력이 비슷하도록 포트 방식으로 추첨하고, 추첨 과정을 애니메이션으로 보여 주는 이벤트</p>
+      </div>
+      <div class="card">
+        <h3>감독 코칭 스타일</h3>
+        <p>전략가·지략가·체계구축가·동기부여가·육성가·실리주의자 6가지 중 선택. 각자 경기·훈련·사기에 실제 효과</p>
+      </div>
+      <div class="card">
+        <h3>구단주 평가와 특전</h3>
+        <p>3경기마다 상대 전력을 고려한 기대 승점과 비교해 평가. 성과가 좋으면 사기·팀워크·훈련 성취도 특전 선택</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>시즌 진행 구조</h2>
+    <p class="sub">2026/27 시즌 기준 · 매 시즌 새로 조 추첨 · 총 5시즌 커리어</p>
+    <div class="flow">
+      <div class="step"><small>8월</small><strong>조 추첨</strong><p>전력 순 9개 포트 → A조·B조</p></div>
+      <div class="step"><small>8월 ~ 2월</small><strong>조별 리그</strong><p>홈 앤드 어웨이 16경기</p></div>
+      <div class="step"><small>3월</small><strong>플레이오프</strong><p>조 4위 vs 5위</p></div>
+      <div class="step"><small>4월</small><strong>8강</strong><p>조 1~3위 + PO 승자</p></div>
+      <div class="step"><small>4~5월</small><strong>4강</strong><p>합계 점수 · 승부차기</p></div>
+      <div class="step final"><small>5월 29일</small><strong>결승</strong><p>중립 구장 단판</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>주요 기능</h2>
+    <div class="grid g4">
+      <div class="card"><h3>라이브 중계</h3><p>문자 중계, 경기장 위 선수 이동, 골 타임라인, 일시정지·배속, 경기 중 교체</p></div>
+      <div class="card"><h3>전술판</h3><p>드래그로 선수 배치, 13개 포메이션 + 사용자 지정, 자리별 역할 35종</p></div>
+      <div class="card"><h3>훈련 · 일정</h3><p>하루 단위 진행, 팀 훈련 14종, 개인 훈련, 휴식·회복 일정 관리</p></div>
+      <div class="card"><h3>선수 상세</h3><p>FM 스타일 세부 능력 1~20, 주·보조 포지션, 포지션 색 구분</p></div>
+      <div class="card"><h3>경기 후 반응</h3><p>결과·상대·득점자에 따라 달라지는 팬 반응과 언론 기사</p></div>
+      <div class="card"><h3>5시즌 커리어</h3><p>나이 증가, 노장 능력 하락, 성장 누적, 시즌별 기록과 커리어 엔딩</p></div>
+      <div class="card"><h3>감독 프로필</h3><p>로고가 있는 시작 화면, 감독 이름과 코칭 스타일 생성</p></div>
+      <div class="card"><h3>데이터 분리</h3><p>선수 약 500명을 CSV로 관리, 수정하면 코드 변경 없이 바로 반영</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span>사용 기술</h2>
+    <table>
+      <tr><th style="width:190px">분야</th><th>내용</th></tr>
+      <tr><td>언어</td><td>Java 17 — record, switch 식, 패턴 매칭 instanceof, enum에 데이터와 동작 담기, 스트림 API</td></tr>
+      <tr><td>화면(GUI)</td><td>Java Swing — 직접 만든 테마·위젯(둥근 카드, 칩, 세그먼트 버튼), Graphics2D로 경기장·로고·골 타임라인 직접 그리기, Timer 애니메이션</td></tr>
+      <tr><td>객체지향 설계</td><td>패키지 계층 분리(모델 / 엔진 / 규칙 / 화면 / 데이터), 캡슐화, 콜백(Consumer·Function)으로 화면과 로직 분리</td></tr>
+      <tr><td>데이터 처리</td><td>CSV 직접 파싱(BOM·인코딩 처리), 누락 포지션 자동 보충, 오류 행 경고</td></tr>
+      <tr><td>시뮬레이션</td><td>포아송 분포 기반 득점 모델, 난수 시드 고정으로 재현 가능한 결과</td></tr>
+      <tr><td>웹 실행</td><td>CheerpJ(브라우저에서 Java 실행) + Java 내장 HTTP 서버(com.sun.net.httpserver)</td></tr>
+      <tr><td>개발 도구</td><td>VS Code, Git · GitHub(비공개 저장소, 협업자 초대), AI 코딩 도구 활용</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span>코드 구조</h2>
+    <p class="sub">패키지별 역할과 코드 양(줄 수)</p>
+    <div class="card bars">
+      <div class="row"><span class="name">gui</span><span class="bar"><i style="width:100%"></i></span><span class="desc">화면 20개 · 5,358줄</span></div>
+      <div class="row"><span class="name">model</span><span class="bar"><i style="width:37%"></i></span><span class="desc">선수·팀·전술 16개 · 1,994줄</span></div>
+      <div class="row"><span class="name">game</span><span class="bar"><i style="width:22%"></i></span><span class="desc">시즌·평가·포스트시즌 12개 · 1,203줄</span></div>
+      <div class="row"><span class="name">sim</span><span class="bar"><i style="width:15%"></i></span><span class="desc">경기 엔진·중계 8개 · 805줄</span></div>
+      <div class="row"><span class="name">data</span><span class="bar"><i style="width:9%"></i></span><span class="desc">CSV 불러오기 3개 · 456줄</span></div>
+      <div class="row"><span class="name">ui · web</span><span class="bar"><i style="width:9%"></i></span><span class="desc">콘솔 모드·웹 서버 3개 · 474줄</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">07</span>핵심 알고리즘</h2>
+    <div class="grid g2">
+      <div class="card">
+        <h3>경기 엔진 — 포아송 득점 모델</h3>
+        <p>두 팀의 경기력 비율로 기대 득점을 구하고, 전술 상성·팀 지시·역할·훈련·감독 스타일 보정을 곱한 뒤 포아송 분포로 실제 득점을 뽑습니다.</p>
+        <div class="formula">기대득점 = 기본값 × (홈 경기력 ÷ 원정 경기력)<sup>k</sup> × 전술 × 역할 × 훈련 × …</div>
+      </div>
+      <div class="card">
+        <h3>경기력 계산</h3>
+        <p>선발 11명의 자리별 능력(포지션·주발 적합도 반영) 평균에 사기·훈련·시설·국적 호흡 보정을 더합니다.</p>
+        <div class="formula">경기력 = 선발 평균 × (1 + 사기 + 훈련 + 시설 + 호흡)</div>
+      </div>
+      <div class="card">
+        <h3>밸런스 조 추첨</h3>
+        <p>상위 11명 평균 능력으로 18팀을 정렬해 2팀씩 9개 포트로 묶고, 포트 안에서 무작위로 A·B조 배정. 200시즌 실험에서 두 조 평균 전력 차이 최대 1.1점(200점 만점).</p>
+      </div>
+      <div class="card">
+        <h3>일정 생성 — 원형 순환 방식</h3>
+        <p>라운드 로빈 원형 순환으로 리그 일정을 만들고, 9팀처럼 홀수일 때는 빈 자리를 넣어 쉬는 팀을 만듭니다. 홈·원정 연속을 줄이도록 균형 조정.</p>
+      </div>
+      <div class="card">
+        <h3>포스트시즌 대진</h3>
+        <p>홈 앤드 어웨이 두 경기 합계로 승자 결정, 동률이면 전력 비율 확률의 승부차기. 승자에 따라 다음 단계 대진을 자동 생성.</p>
+      </div>
+      <div class="card">
+        <h3>구단주 평가 — 기대 승점</h3>
+        <p>상대 등급 차이로 경기당 기대 승점(같은 등급 1.4점, 한 등급 차이 ±0.45점)을 정하고, 최근 3경기 실제 승점과 비교해 대만족·만족·보통·실망으로 판정.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">08</span>검증과 밸런스</h2>
+    <p class="sub">화면 없이 게임을 수백 번 자동으로 돌리는 테스트 코드로 확인</p>
+    <div class="grid g4">
+      <div class="card stat"><b>300</b><span>시즌 자동 진행<br>모든 팀 우승 가능 확인</span></div>
+      <div class="card stat"><b>3,220</b><span>경기 교체 테스트<br>오류 0건</span></div>
+      <div class="card stat"><b>200</b><span>시즌 포스트시즌 검증<br>대진·일정 오류 0건</span></div>
+      <div class="card stat"><b>360</b><span>시즌 코칭 스타일 비교<br>한 스타일 독주 없음</span></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <ul class="check">
+        <li>우리 팀만 유리하지 않도록 AI 팀의 컨디션 회복·훈련량을 경기 간격에 맞춰 조정</li>
+        <li>코칭 스타일 효과를 시뮬레이션 결과에 맞춰 두 차례 수치 조정</li>
+        <li>경기 시간 이후 골이 기록되는 버그, 홈·원정 7연속 버그 등을 테스트로 찾아 수정</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">09</span>앞으로의 계획</h2>
+    <div class="grid g3">
+      <div class="card"><h3>저장 · 불러오기</h3><p>시즌 진행 상황을 파일로 저장해 이어서 플레이</p></div>
+      <div class="card"><h3>이적 시장</h3><p>시즌 사이 선수 영입·방출과 예산 관리</p></div>
+      <div class="card"><h3>웹 공개</h3><p>가상 선수 이름으로 바꾼 뒤 링크로 누구나 플레이</p></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">Super League Manager · Java 17 / Swing · 2026 · 이 페이지는 인터넷 없이도 열립니다.</div>
+</footer>
+
+</body>
+</html>

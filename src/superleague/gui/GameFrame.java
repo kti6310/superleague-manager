@@ -44,10 +44,14 @@ public class GameFrame extends JFrame {
     }
 
     private void show(java.awt.Container panel) {
-        setContentPane(panel);
-        Theme.adapt(panel);
-        revalidate();
-        repaint();
+        // previous screen fades out over the new one (0.24s) instead of a hard cut
+        Anim.crossFade(getRootPane(), () -> {
+            setContentPane(panel);
+            Theme.adapt(panel);
+            revalidate();
+            validate();
+            repaint();
+        });
     }
 
     private void startGame(int teamIndex, Long seed) {
@@ -60,10 +64,7 @@ public class GameFrame extends JFrame {
         teams.get(teamIndex).setManager(managerName, managerStyle);
         Season season = new Season(teams, teams.get(teamIndex), random);
         GamePanel panel = new GamePanel(season, data, this::showStart);
-        setContentPane(panel);
-        Theme.adapt(panel);
-        revalidate();
-        repaint();
+        show(panel);
         javax.swing.SwingUtilities.invokeLater(() -> DrawDialog.show(panel, season));
     }
 

@@ -105,7 +105,8 @@ final class Tables {
                     }
             }
         }
-        return mine ? Theme.ACCENT_PRESS : Theme.TEXT;
+        // "our team" row: dark blue text is unreadable on the dark highlight, so use the bright blue there
+        return mine ? (Theme.isDark() ? Theme.ACCENT_BRIGHT : Theme.ACCENT_PRESS) : Theme.TEXT;
     }
 
     static JScrollPane scroll(JTable table) {

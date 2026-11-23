@@ -53,19 +53,52 @@ final class Widgets {
         private Color line = Theme.BORDER;
         private int lineWidth = 1;
         private final int arc;
+        // colour fade when hover/selection changes (from → current target)
+        private Color bgFrom;
+        private Color lineFrom;
+        private Anim.Value fade;
 
         RoundPanel(LayoutManager layout, int arc) {
             super(layout);
             this.arc = arc;
             setOpaque(false);
             setBackground(Theme.CARD);
+            fade = new Anim.Value(this, 1, 160);
         }
 
         void restyle(java.util.Map<Integer, Color> map) {
             line = Theme.lineColor(line, map);
         }
 
+        private Color shownBg() {
+            return fade == null ? getBackground() : Anim.mix(bgFrom, getBackground(), fade.get());
+        }
+
+        private Color shownLine() {
+            return fade == null ? line : Anim.mix(lineFrom, line, fade.get());
+        }
+
+        private void beginFade() {
+            if (fade != null && isShowing()) {
+                bgFrom = shownBg();
+                lineFrom = shownLine();
+                fade.snap(0);
+                fade.animateTo(1);
+            }
+        }
+
+        @Override
+        public void setBackground(Color bg) {
+            if (fade != null && bg != null && !bg.equals(getBackground())) {
+                beginFade();
+            }
+            super.setBackground(bg);
+        }
+
         void setLine(Color line, int width) {
+            if (line != null && !line.equals(this.line)) {
+                beginFade();
+            }
             this.line = line;
             this.lineWidth = width;
             repaint();
@@ -74,10 +107,10 @@ final class Widgets {
         @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = smooth(g);
-            g2.setColor(getBackground());
+            g2.setColor(shownBg());
             g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
             if (line != null) {
-                g2.setColor(line);
+                g2.setColor(shownLine());
                 g2.setStroke(new BasicStroke(lineWidth));
                 float o = lineWidth / 2f;
                 g2.drawRoundRect(Math.round(o), Math.round(o), Math.round(getWidth() - 1 - lineWidth),
@@ -93,6 +126,16 @@ final class Widgets {
 
     static class FlatButton extends JButton {
         private final Kind kind;
+        private final Anim.Value hoverAnim = new Anim.Value(this, 0, 150);
+        private final Anim.Value pressAnim = new Anim.Value(this, 0, 90);
+        private Dimension fixedSize;
+
+        /** Same-size buttons (e.g. title screen); other buttons keep their text-based width. */
+        void fixSize(int w, int h) {
+            fixedSize = new Dimension(w, h);
+            setMaximumSize(fixedSize);
+            revalidate();
+        }
 
         FlatButton(String text, Kind kind) {
             super(text);
@@ -105,10 +148,18 @@ final class Widgets {
             setFont(Theme.font(Font.BOLD, 14));
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setBorder(BorderFactory.createEmptyBorder(10, 18, 10, 18));
+            getModel().addChangeListener(e -> {
+                boolean on = isEnabled();
+                hoverAnim.animateTo(on && getModel().isRollover() ? 1 : 0);
+                pressAnim.animateTo(on && getModel().isPressed() ? 1 : 0);
+            });
         }
 
         @Override
         public Dimension getPreferredSize() {
+            if (fixedSize != null) {
+                return fixedSize;
+            }
             FontMetrics fm = getFontMetrics(getFont());
             return new Dimension(fm.stringWidth(getText()) + 36, 42);
         }
@@ -119,31 +170,36 @@ final class Widgets {
             int w = getWidth();
             int h = getHeight();
             boolean on = isEnabled();
-            boolean hover = on && getModel().isRollover();
-            boolean down = on && getModel().isPressed();
+            double hover = on ? hoverAnim.get() : 0;
+            double down = on ? pressAnim.get() : 0;
             Color bg;
             Color fg;
             Color line = null;
             switch (kind) {
                 case PRIMARY -> {
-                    bg = !on ? Theme.DISABLED_BG : down ? Theme.ACCENT_PRESS : hover ? Theme.ACCENT_HOVER : Theme.ACCENT;
+                    bg = !on ? Theme.DISABLED_BG
+                            : Anim.mix(Anim.mix(Theme.ACCENT, Theme.ACCENT_HOVER, hover), Theme.ACCENT_PRESS, down);
                     fg = on ? Color.WHITE : Theme.DISABLED_TEXT;
                 }
                 case SECONDARY -> {
-                    bg = !on ? Theme.CARD : down ? Theme.SUBTLE_PRESS : hover ? Theme.SUBTLE : Theme.CARD;
+                    bg = !on ? Theme.CARD
+                            : Anim.mix(Anim.mix(Theme.CARD, Theme.SUBTLE, hover), Theme.SUBTLE_PRESS, down);
                     fg = on ? Theme.TEXT : Theme.DISABLED_TEXT;
-                    line = Theme.BORDER_STRONG;
+                    line = on ? Anim.mix(Theme.BORDER_STRONG, Theme.ACCENT_BRIGHT, hover * 0.6) : Theme.BORDER_STRONG;
                 }
                 default -> {
-                    bg = down ? Theme.SUBTLE_PRESS : hover ? Theme.SUBTLE : new Color(0, 0, 0, 0);
+                    bg = Anim.mix(Anim.mix(new Color(0, 0, 0, 0), Theme.SUBTLE, hover), Theme.SUBTLE_PRESS, down);
                     fg = on ? Theme.ACCENT : Theme.DISABLED_TEXT;
                 }
             }
+            // pressed buttons sink 1px so the click feels physical
+            int sink = (int) Math.round(down);
+            g2.translate(0, sink);
             g2.setColor(bg);
-            g2.fillRoundRect(0, 0, w - 1, h - 1, 10, 10);
+            g2.fillRoundRect(0, 0, w - 1, h - 1 - sink, 10, 10);
             if (line != null) {
                 g2.setColor(line);
-                g2.drawRoundRect(0, 0, w - 1, h - 1, 10, 10);
+                g2.drawRoundRect(0, 0, w - 1, h - 1 - sink, 10, 10);
             }
             focusRing(g2, this, 10);
             g2.setFont(getFont());
@@ -156,6 +212,7 @@ final class Widgets {
     static class Segmented extends JPanel {
         private final JToggleButton[] items;
         private boolean silent;
+        private final Anim.Value pill = new Anim.Value(this, -1, 220);
 
         Segmented(String[] labels, IntConsumer onSelect) {
             super(new GridLayout(1, labels.length, 2, 0));
@@ -169,6 +226,15 @@ final class Widgets {
                 b.addActionListener(e -> {
                     if (!silent) {
                         onSelect.accept(index);
+                    }
+                });
+                b.addItemListener(e -> {
+                    if (b.isSelected()) {
+                        if (pill.get() < 0) {
+                            pill.snap(index);
+                        } else {
+                            pill.animateTo(index);
+                        }
                     }
                 });
                 group.add(b);
@@ -201,6 +267,21 @@ final class Widgets {
             Graphics2D g2 = smooth(g);
             g2.setColor(Theme.TRACK);
             g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
+            double p = pill.get();
+            if (p >= 0 && items.length > 0) {
+                int lo = (int) Math.floor(p);
+                int hi = Math.min(items.length - 1, lo + 1);
+                double f = p - lo;
+                java.awt.Rectangle a = items[Math.max(0, lo)].getBounds();
+                java.awt.Rectangle b = items[hi].getBounds();
+                int x = (int) Math.round(a.x + (b.x - a.x) * f);
+                int w = (int) Math.round(a.width + (b.width - a.width) * f);
+                // the white "selected" pill slides between options instead of jumping
+                g2.setColor(new Color(15, 27, 51, 18));
+                g2.fillRoundRect(x, a.y + 1, w - 1, a.height - 1, 8, 8);
+                g2.setColor(isEnabled() ? Theme.CARD : Theme.SUBTLE);
+                g2.fillRoundRect(x, a.y, w - 1, a.height - 2, 8, 8);
+            }
             g2.dispose();
         }
     }
@@ -222,12 +303,7 @@ final class Widgets {
             int w = getWidth();
             int h = getHeight();
             boolean on = isEnabled();
-            if (isSelected()) {
-                g2.setColor(new Color(15, 27, 51, 18));
-                g2.fillRoundRect(0, 1, w - 1, h - 1, 8, 8);
-                g2.setColor(Theme.CARD);
-                g2.fillRoundRect(0, 0, w - 1, h - 2, 8, 8);
-            } else if (on && getModel().isRollover()) {
+            if (!isSelected() && on && getModel().isRollover()) {
                 g2.setColor(Theme.TRACK_HOVER);
                 g2.fillRoundRect(0, 0, w - 1, h - 2, 8, 8);
             }
@@ -297,10 +373,10 @@ final class Widgets {
     }
 
     static class SeasonProgress extends JComponent {
-        private double fraction;
+        private final Anim.Value fraction = new Anim.Value(this, 0, 500);
 
         void setFraction(double fraction) {
-            this.fraction = Math.max(0, Math.min(1, fraction));
+            this.fraction.animateTo(Math.max(0, Math.min(1, fraction)));
             repaint();
         }
 
@@ -315,7 +391,7 @@ final class Widgets {
             g2.setColor(Theme.NAVY_LIGHT);
             g2.fillRect(0, 0, getWidth(), getHeight());
             g2.setColor(Theme.ACCENT_BRIGHT);
-            g2.fillRect(0, 0, (int) Math.round(getWidth() * fraction), getHeight());
+            g2.fillRect(0, 0, (int) Math.round(getWidth() * fraction.get()), getHeight());
             g2.dispose();
         }
     }

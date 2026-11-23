@@ -23,6 +23,7 @@ class PitchView extends JComponent {
 
     private final Team home;
     private final Team away;
+    private final Kits.Match kits;
     private final int homePossession;
     private final Random random = new Random();
     private final double[][] cur = new double[N * 2][2];
@@ -43,6 +44,7 @@ class PitchView extends JComponent {
     PitchView(Team home, Team away, int homePossession) {
         this.home = home;
         this.away = away;
+        this.kits = Kits.forMatch(home, away);
         this.homePossession = homePossession;
         setPreferredSize(new Dimension(580, 375));
         setOpaque(false);
@@ -251,6 +253,9 @@ class PitchView extends JComponent {
             bannerTicks--;
             moving = true;
         }
+        if (highlight >= 0) {
+            moving = true; // keep the halo pulsing
+        }
         if (moving) {
             repaint();
         }
@@ -304,10 +309,44 @@ class PitchView extends JComponent {
         g2.drawRect(px + pw - boxW, py + (ph - boxH) / 2, boxW, boxH);
         g2.drawRect(px, py + (ph - sixH) / 2, sixW, sixH);
         g2.drawRect(px + pw - sixW, py + (ph - sixH) / 2, sixW, sixH);
+        // spots, penalty arcs and corner arcs
+        g2.setColor(new Color(255, 255, 255, 190));
+        int spot = 3;
+        g2.fillOval(px + pw / 2 - spot, py + ph / 2 - spot, spot * 2, spot * 2);
+        int penX = pw * 11 / 100;
+        g2.fillOval(px + penX - 2, py + ph / 2 - 2, 4, 4);
+        g2.fillOval(px + pw - penX - 2, py + ph / 2 - 2, 4, 4);
+        g2.setColor(new Color(255, 255, 255, 170));
+        int arcR = ph * 12 / 100;
+        g2.drawArc(px + penX - arcR, py + ph / 2 - arcR, arcR * 2, arcR * 2, -53, 106);
+        g2.drawArc(px + pw - penX - arcR, py + ph / 2 - arcR, arcR * 2, arcR * 2, 127, 106);
+        int cornerR = 7;
+        g2.drawArc(px - cornerR, py - cornerR, cornerR * 2, cornerR * 2, 270, 90);
+        g2.drawArc(px + pw - cornerR, py - cornerR, cornerR * 2, cornerR * 2, 180, 90);
+        g2.drawArc(px - cornerR, py + ph - cornerR, cornerR * 2, cornerR * 2, 0, 90);
+        g2.drawArc(px + pw - cornerR, py + ph - cornerR, cornerR * 2, cornerR * 2, 90, 90);
+
+        // goals with a little net behind the line
         int goalH = ph * 12 / 100;
-        g2.setStroke(new BasicStroke(3f));
-        g2.drawLine(px - 4, py + (ph - goalH) / 2, px - 4, py + (ph + goalH) / 2);
-        g2.drawLine(px + pw + 4, py + (ph - goalH) / 2, px + pw + 4, py + (ph + goalH) / 2);
+        int gy = py + (ph - goalH) / 2;
+        int depth = 9;
+        g2.setColor(new Color(255, 255, 255, 60));
+        g2.fillRect(px - depth, gy, depth, goalH);
+        g2.fillRect(px + pw, gy, depth, goalH);
+        g2.setColor(new Color(255, 255, 255, 90));
+        g2.setStroke(new BasicStroke(0.8f));
+        for (int ny = gy + 4; ny < gy + goalH; ny += 4) {
+            g2.drawLine(px - depth, ny, px, ny);
+            g2.drawLine(px + pw, ny, px + pw + depth, ny);
+        }
+        for (int nx = 3; nx < depth; nx += 3) {
+            g2.drawLine(px - nx, gy, px - nx, gy + goalH);
+            g2.drawLine(px + pw + nx, gy, px + pw + nx, gy + goalH);
+        }
+        g2.setColor(Color.WHITE);
+        g2.setStroke(new BasicStroke(2.4f));
+        g2.drawRect(px - depth, gy, depth, goalH);
+        g2.drawRect(px + pw, gy, depth, goalH);
 
         g2.setFont(Theme.font(Font.BOLD, 11));
         g2.setColor(new Color(255, 255, 255, 200));
@@ -317,38 +356,54 @@ class PitchView extends JComponent {
         FontMetrics fm = g2.getFontMetrics();
         g2.drawString(right, px + pw - 8 - fm.stringWidth(right), py + ph - 8);
 
-        int r = Math.max(8, Math.min(12, ph / 24));
+        int r = Math.max(9, Math.min(13, ph / 22));
+        int labelX = 0;
+        int labelY = 0;
+        String label = null;
         for (int i = 0; i < N * 2; i++) {
             int sx = px + (int) Math.round(cur[i][0] * pw);
             int sy = py + (int) Math.round(cur[i][1] * ph);
-            drawStone(g2, sx, sy, r, i < N, false);
+            boolean isHome = i < N;
+            boolean keeper = i % N == 0;
+            Kits.Kit kit = keeper ? (isHome ? kits.homeKeeper() : kits.awayKeeper()) : (isHome ? kits.home() : kits.away());
+            Player p = team(i).slotPlayer(i % N);
+            String no = p == null ? "" : String.valueOf(Kits.number(team(i), p));
+            if (i == highlight) {
+                // soft pulsing halo around the player on the ball
+                double pulse = 0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 140.0);
+                g2.setColor(new Color(251, 191, 36, (int) (60 + 50 * pulse)));
+                int hr = r + 5 + (int) Math.round(2 * pulse);
+                g2.fillOval(sx - hr, sy - hr, hr * 2, hr * 2);
+            }
+            drawPlayer(g2, sx, sy, r, kit, no);
             if (i == highlight) {
                 g2.setColor(new Color(0xFBBF24));
-                g2.setStroke(new BasicStroke(2.5f));
+                g2.setStroke(new BasicStroke(2.2f));
                 g2.drawOval(sx - r - 3, sy - r - 3, r * 2 + 6, r * 2 + 6);
-                Player p = team(i).slotPlayer(i % N);
                 if (p != null) {
-                    g2.setFont(Theme.font(Font.BOLD, 12));
-                    FontMetrics f2 = g2.getFontMetrics();
-                    int tw = f2.stringWidth(p.name());
-                    int lx = Math.max(px, Math.min(px + pw - tw - 8, sx - tw / 2 - 4));
-                    g2.setColor(new Color(15, 27, 51, 210));
-                    g2.fillRoundRect(lx, sy - r - 26, tw + 8, 18, 8, 8);
-                    g2.setColor(Color.WHITE);
-                    g2.drawString(p.name(), lx + 4, sy - r - 13);
+                    label = no + "  " + p.name();
+                    labelX = sx;
+                    labelY = sy;
                 }
             }
         }
 
         int bx = px + (int) Math.round(ball[0] * pw);
         int by = py + (int) Math.round(ball[1] * ph);
-        g2.setColor(new Color(0, 0, 0, 80));
-        g2.fillOval(bx - 4, by - 2, 9, 9);
-        g2.setColor(new Color(0xFBBF24));
-        g2.fillOval(bx - 5, by - 5, 10, 10);
-        g2.setColor(new Color(0x92400E));
-        g2.setStroke(new BasicStroke(1f));
-        g2.drawOval(bx - 5, by - 5, 10, 10);
+        drawBall(g2, bx, by);
+
+        // name tag drawn last so it sits above everyone
+        if (label != null) {
+            g2.setFont(Theme.font(Font.BOLD, 12));
+            FontMetrics f2 = g2.getFontMetrics();
+            int tw = f2.stringWidth(label);
+            int lx = Math.max(px, Math.min(px + pw - tw - 8, labelX - tw / 2 - 4));
+            int ly = labelY - r - 27 < py ? labelY + r + 8 : labelY - r - 27;
+            g2.setColor(new Color(15, 27, 51, 220));
+            g2.fillRoundRect(lx, ly, tw + 10, 19, 9, 9);
+            g2.setColor(Color.WHITE);
+            g2.drawString(label, lx + 5, ly + 14);
+        }
 
         if (bannerTicks > 0 && banner != null) {
             float alpha = Math.min(1f, bannerTicks / 15f);
@@ -364,22 +419,66 @@ class PitchView extends JComponent {
         g2.dispose();
     }
 
-    static void drawStone(Graphics2D g2, int cx, int cy, int r, boolean black, boolean red) {
-        g2.setColor(new Color(0, 0, 0, 60));
-        g2.fillOval(cx - r + 1, cy - r + 2, r * 2, r * 2);
-        float[] dist = {0f, 1f};
-        Color[] colors = black
-                ? new Color[]{new Color(0x6B6B6B), new Color(0x0D0D0D)}
-                : new Color[]{Color.WHITE, new Color(0xCFCFCF)};
-        g2.setPaint(new RadialGradientPaint(cx - r / 3f, cy - r / 3f, r * 1.4f, dist, colors));
+    /** One player: kit-coloured disc (stripes for striped kits), soft shadow and the shirt number. */
+    static void drawPlayer(Graphics2D g2, int cx, int cy, int r, Kits.Kit kit, String number) {
+        g2.setColor(new Color(0, 0, 0, 70));
+        g2.fillOval(cx - r + 1, cy - r + 3, r * 2, r * 2);
+        Color shirt = kit.shirt();
+        float[] dist = {0f, 0.55f, 1f};
+        Color[] colors = {Anim.mix(shirt, Color.WHITE, 0.35), shirt, Anim.mix(shirt, Color.BLACK, 0.25)};
+        g2.setPaint(new RadialGradientPaint(cx - r / 3f, cy - r / 3f, r * 1.5f, dist, colors));
         g2.fillOval(cx - r, cy - r, r * 2, r * 2);
-        g2.setColor(black ? new Color(0x000000) : new Color(0x9A9A9A));
-        g2.setStroke(new BasicStroke(1f));
-        g2.drawOval(cx - r, cy - r, r * 2, r * 2);
-        if (red) {
-            g2.setColor(Theme.BAD);
-            g2.setStroke(new BasicStroke(2f));
-            g2.drawOval(cx - r - 2, cy - r - 2, r * 2 + 4, r * 2 + 4);
+        if (kit.striped()) {
+            java.awt.Shape oldClip = g2.getClip();
+            g2.clip(new java.awt.geom.Ellipse2D.Float(cx - r, cy - r, r * 2, r * 2));
+            g2.setColor(kit.trim());
+            int stripe = Math.max(3, r * 2 / 5);
+            for (int x = cx - r + stripe / 2; x < cx + r; x += stripe * 2) {
+                g2.fillRect(x, cy - r, stripe, r * 2);
+            }
+            g2.setClip(oldClip);
+            if (number != null && !number.isEmpty()) {
+                // solid number patch so the number stays readable on stripes
+                int pr = Math.round(r * 0.68f);
+                g2.setColor(shirt);
+                g2.fillOval(cx - pr, cy - pr, pr * 2, pr * 2);
+            }
         }
+        g2.setColor(Anim.mix(shirt, Color.BLACK, 0.45));
+        g2.setStroke(new BasicStroke(1.3f));
+        g2.drawOval(cx - r, cy - r, r * 2, r * 2);
+        g2.setColor(new Color(255, 255, 255, 70));
+        g2.drawArc(cx - r + 2, cy - r + 2, r * 2 - 4, r * 2 - 4, 100, 80);
+        if (number != null && !number.isEmpty()) {
+            g2.setFont(Theme.font(Font.BOLD, Math.max(9, r * (number.length() > 1 ? 0.95f : 1.1f))));
+            FontMetrics fm = g2.getFontMetrics();
+            int tx = cx - fm.stringWidth(number) / 2;
+            int ty = cy + (fm.getAscent() - fm.getDescent()) / 2;
+            Color ink = kit.number();
+            Color halo = Kits.luminance(ink) > 0.5 ? new Color(0, 0, 0, 120) : new Color(255, 255, 255, 120);
+            g2.setColor(halo);
+            g2.drawString(number, tx + 1, ty + 1);
+            g2.setColor(ink);
+            g2.drawString(number, tx, ty);
+        }
+    }
+
+    /** Small kit swatch (legend, header, commentary rows). */
+    static void drawKitDot(Graphics2D g2, int cx, int cy, int r, Kits.Kit kit) {
+        drawPlayer(g2, cx, cy, r, kit, null);
+    }
+
+    private static void drawBall(Graphics2D g2, int bx, int by) {
+        int br = 5;
+        g2.setColor(new Color(0, 0, 0, 90));
+        g2.fillOval(bx - br + 1, by - br + 3, br * 2, br * 2 - 2);
+        g2.setColor(Color.WHITE);
+        g2.fillOval(bx - br, by - br, br * 2, br * 2);
+        g2.setColor(new Color(0x1F2937));
+        g2.fillOval(bx - 2, by - 2, 4, 4);
+        g2.fillOval(bx - br + 1, by - 1, 2, 2);
+        g2.fillOval(bx + br - 3, by - 1, 2, 2);
+        g2.setStroke(new BasicStroke(1f));
+        g2.drawOval(bx - br, by - br, br * 2, br * 2);
     }
 }

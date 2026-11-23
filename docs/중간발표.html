@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Super League Manager · 중간 발표</title>
+<style>
+  :root {
+    --bg: #eef1f6;
+    --paper: #ffffff;
+    --ink: #142036;
+    --muted: #5b6b82;
+    --line: #e3e8f0;
+    --navy: #13285c;
+    --blue: #2563eb;
+    --blue-soft: #e8efff;
+    --gold: #e0a92e;
+    --gold-soft: #fff6e0;
+    --green: #16a34a;
+    --green-soft: #e6f6ec;
+    --red: #dc2626;
+    --red-soft: #fdecec;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  #stage { position: fixed; inset: 0; display: grid; place-items: center; }
+  #deck { width: 1280px; height: 720px; position: relative; transform-origin: center center; }
+  .slide {
+    position: absolute; inset: 0;
+    background: var(--paper);
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(19, 40, 92, .12);
+    padding: 56px 80px 56px;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .slide.active { display: flex; animation: enter .35s ease-out; }
+  @keyframes enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .slide::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 10px;
+    background: linear-gradient(180deg, var(--blue), var(--navy));
+  }
+  .slide .page { position: absolute; right: 40px; bottom: 22px; color: #9aa6b8; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .slide .brand { position: absolute; left: 80px; bottom: 22px; color: #9aa6b8; font-size: 15px; font-weight: 600; letter-spacing: .04em; }
+  .kicker { color: var(--blue); font-weight: 800; font-size: 18px; letter-spacing: .06em; margin-bottom: 8px; }
+  h1 { font-size: 72px; line-height: 1.05; margin: 0; letter-spacing: -.02em; }
+  h2 { font-size: 42px; margin: 0 0 8px; letter-spacing: -.01em; }
+  .lead { font-size: 21px; color: var(--muted); margin: 0 0 26px; }
+  .gold { color: var(--gold); }
+  .grid { display: grid; gap: 18px; align-content: start; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .card { background: #f8fafd; border: 1px solid var(--line); border-radius: 16px; padding: 20px 24px; }
+  .card h3 { margin: 0 0 8px; font-size: 22px; }
+  .card p { margin: 0; color: var(--muted); font-size: 17px; line-height: 1.55; }
+  .tag { display: inline-block; font-size: 14px; font-weight: 800; padding: 3px 10px; border-radius: 8px; margin-bottom: 10px; }
+  .t-blue { background: var(--blue-soft); color: var(--blue); }
+  .t-gold { background: var(--gold-soft); color: #a26b00; }
+  .t-green { background: var(--green-soft); color: var(--green); }
+  .t-red { background: var(--red-soft); color: var(--red); }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 7px 16px; font-size: 16px; font-weight: 700; color: var(--navy); }
+  .title-wrap { display: flex; align-items: center; gap: 48px; flex: 1; }
+  .title-wrap svg { width: 210px; height: 210px; flex: none; }
+  .flow { display: flex; gap: 0; margin-top: 20px; }
+  .step { flex: 1; background: #f8fafd; border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; margin-right: 26px; position: relative; }
+  .step:last-child { margin-right: 0; }
+  .step:not(:last-child)::after { content: "›"; position: absolute; right: -21px; top: 50%; transform: translateY(-50%); color: var(--blue); font-size: 34px; font-weight: 800; }
+  .step small { color: var(--blue); font-weight: 800; font-size: 15px; }
+  .step strong { display: block; font-size: 24px; margin: 6px 0; }
+  .step p { margin: 0; font-size: 15px; color: var(--muted); line-height: 1.45; }
+  .step.done { background: var(--green-soft); border-color: #b9e4c8; }
+  .step.done small { color: var(--green); }
+  .step.now { background: var(--gold-soft); border-color: #f1d48a; }
+  .step.now small { color: #a26b00; }
+  .note { margin-top: 22px; font-size: 17px; color: var(--muted); background: #f8fafd; border-left: 4px solid var(--blue); padding: 12px 18px; border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 17px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-size: 14px; background: #f1f4f9; }
+  td:first-child { font-weight: 800; color: var(--navy); white-space: nowrap; }
+  .bars .row { display: grid; grid-template-columns: 120px 1fr 280px; align-items: center; gap: 18px; margin: 14px 0; font-size: 18px; }
+  .bars .name { font-weight: 800; color: var(--navy); }
+  .bars .bar { height: 18px; background: #eef2f8; border-radius: 10px; overflow: hidden; }
+  .bars .bar i { display: block; height: 100%; background: var(--blue); border-radius: 10px; }
+  .bars .desc { color: var(--muted); font-size: 16px; }
+  .formula { font-family: ui-monospace, Consolas, monospace; background: #eef2f8; border-radius: 10px; padding: 12px 14px; font-size: 16px; color: var(--navy); margin-top: 12px; line-height: 1.6; }
+  .stat { text-align: center; padding: 26px 12px; }
+  .stat b { display: block; font-size: 52px; color: var(--navy); line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: 17px; line-height: 1.5; }
+  ul.check { margin: 14px 0 0; padding-left: 26px; font-size: 18px; color: var(--muted); line-height: 1.75; }
+  ul.check li::marker { content: "✓  "; color: var(--green); font-weight: 800; }
+  .split { display: grid; grid-template-columns: 1.05fr 1fr; gap: 30px; align-items: start; }
+  .end { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+  .end h1 { font-size: 84px; }
+  .people { display: flex; gap: 14px; margin-top: 30px; }
+  .person { background: var(--blue-soft); color: var(--navy); border-radius: 12px; padding: 10px 18px; font-size: 20px; font-weight: 800; }
+  .vs { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 18px; background: #f8fafd; border: 1px solid var(--line); border-radius: 16px; padding: 18px 22px; }
+  .vs .team { text-align: center; font-weight: 800; font-size: 19px; }
+  .vs .dot { width: 46px; height: 46px; border-radius: 50%; margin: 0 auto 6px; box-shadow: inset -4px -6px 0 rgba(0,0,0,.18), 0 3px 6px rgba(0,0,0,.15); }
+  .vs .mid { font-size: 28px; font-weight: 900; color: #c5cdd9; }
+  .cmp { margin-top: 10px; font-size: 14px; color: var(--muted); }
+  .cmp .line { display: grid; grid-template-columns: 50px 1fr 50px; gap: 10px; align-items: center; margin: 6px 0; }
+  .cmp .track { height: 8px; border-radius: 8px; background: #d6dce6; overflow: hidden; }
+  .cmp .track i { display: block; height: 100%; background: var(--blue); }
+  .result { margin-top: 14px; text-align: center; background: #fff; border: 1px solid var(--line); border-top: 6px solid var(--green); border-radius: 14px; padding: 14px; }
+  .result small { color: var(--muted); font-weight: 700; }
+  .result b { display: block; color: var(--green); font-size: 30px; }
+  .result .score { font-size: 30px; font-weight: 900; color: var(--ink); }
+
+  [contenteditable="true"] { outline: 2px dashed rgba(37, 99, 235, .35); outline-offset: 4px; border-radius: 4px; cursor: text; }
+  [contenteditable="true"]:focus { outline: 2px solid var(--blue); background: rgba(37, 99, 235, .04); }
+
+  #bar {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; gap: 6px; align-items: center;
+    background: rgba(255, 255, 255, .96); border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 8px; box-shadow: 0 8px 24px rgba(19, 40, 92, .12);
+    font-size: 14px; z-index: 10; transition: opacity .2s;
+  }
+  #bar button {
+    border: none; background: transparent; color: var(--navy); font: inherit; font-weight: 700;
+    padding: 7px 12px; border-radius: 999px; cursor: pointer;
+  }
+  #bar button:hover { background: var(--blue-soft); }
+  #bar button.on { background: var(--blue); color: #fff; }
+  #bar .count { color: var(--muted); padding: 0 8px; font-variant-numeric: tabular-nums; min-width: 64px; text-align: center; }
+  #bar .sep { width: 1px; height: 20px; background: var(--line); }
+  body.present #bar { opacity: 0; }
+  body.present #bar:hover { opacity: 1; }
+  #toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .25s; z-index: 11; pointer-events: none; }
+  #toast.show { opacity: 1; }
+
+  @media print {
+    @page { size: 1280px 720px; margin: 0; }
+    body { overflow: visible; background: #fff; }
+    #stage { position: static; display: block; }
+    #deck { transform: none !important; width: 1280px; height: auto; }
+    .slide { display: flex !important; position: relative; width: 1280px; height: 720px; border-radius: 0; box-shadow: none; break-after: page; animation: none !important; }
+    #bar, #toast { display: none; }
+    [contenteditable] { outline: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="stage"><div id="deck">
+
+<!-- 1. 표지 -->
+<section class="slide">
+  <div class="title-wrap">
+    <svg viewBox="0 0 100 100" aria-label="Super League Manager 엠블럼">
+      <defs><linearGradient id="sh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2563eb"/><stop offset="1" stop-color="#13285c"/></linearGradient></defs>
+      <path d="M10 8 H90 V52 C90 78 64 92 50 99 C36 92 10 78 10 52 Z" fill="url(#sh)" stroke="#e0a92e" stroke-width="4"/>
+      <circle cx="50" cy="55" r="22" fill="#fff" stroke="#b8862b" stroke-width="1.5"/>
+      <polygon points="50,45.8 58.7,52.2 55.4,62.4 44.6,62.4 41.3,52.2" fill="#13285c"/>
+      <g stroke="#13285c" stroke-width="1.6"><line x1="50" y1="45.8" x2="50" y2="33"/><line x1="58.7" y1="52.2" x2="70.9" y2="48.2"/><line x1="55.4" y1="62.4" x2="62.9" y2="72.8"/><line x1="44.6" y1="62.4" x2="37.1" y2="72.8"/><line x1="41.3" y1="52.2" x2="29.1" y2="48.2"/></g>
+      <polygon points="50,15 51.9,19.4 56.7,19.8 53,22.9 54.1,27.6 50,25.1 45.9,27.6 47,22.9 43.3,19.8 48.1,19.4" fill="#e0a92e"/>
+    </svg>
+    <div>
+      <div class="kicker" data-edit>기말고사 대체 프로젝트 · 중간 발표</div>
+      <h1 data-edit>SUPER LEAGUE <span class="gold">MANAGER</span></h1>
+      <p class="lead" style="margin-top:18px" data-edit>Java로 만드는 축구 감독 시뮬레이션 게임 · 진행 상황 보고</p>
+      <div class="people" data-edit>
+        <span class="person">배찬익</span>
+        <span class="person">김태일</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. 한눈에 보기 -->
+<section class="slide">
+  <div class="kicker">01</div>
+  <h2 data-edit>지금까지 한눈에 보기</h2>
+  <p class="lead" data-edit>초기 발표 때 계획한 기능 대부분을 실제로 플레이할 수 있는 상태</p>
+  <div class="grid g4">
+    <div class="card stat" data-edit><b>69</b><span>Java 파일<br>약 12,300줄</span></div>
+    <div class="card stat" data-edit><b>18</b><span>구단<br>선수 499명 (CSV)</span></div>
+    <div class="card stat" data-edit><b>34</b><span>경기일<br>정규 27 + 포스트시즌</span></div>
+    <div class="card stat" data-edit><b>5</b><span>시즌 커리어<br>엔딩까지</span></div>
+  </div>
+  <div class="chips" data-edit>
+    <span class="chip">Java 17 + Swing</span><span class="chip">외부 라이브러리 0개</span><span class="chip">게임 창 · 웹 · 콘솔 3가지 실행</span><span class="chip">VS Code F5 실행</span><span class="chip">다크 모드</span>
+  </div>
+  <div class="note" data-edit>git에서 내려받아 <b>게임 실행.vbs</b> 더블클릭 한 번이면 바로 실행되도록 jar까지 함께 관리</div>
+</section>
+
+<!-- 3. 개발 단계 -->
+<section class="slide">
+  <div class="kicker">02</div>
+  <h2 data-edit>개발 단계 진행 상황</h2>
+  <p class="lead" data-edit>초기 발표의 4단계 로드맵 중 3단계까지 완료, 지금은 다듬는 단계</p>
+  <div class="flow">
+    <div class="step done" data-edit><small>1단계 · 완료</small><strong>기초</strong><p>CSV 데이터 · 선수 능력치 · 포아송 경기 엔진 · 순위표</p></div>
+    <div class="step done" data-edit><small>2단계 · 완료</small><strong>경기</strong><p>라이브 중계 · 전술판 · 교체 · 경기 중 전술 변경 · 체력</p></div>
+    <div class="step done" data-edit><small>3단계 · 완료</small><strong>리그 운영</strong><p>디비전 + 포스트시즌 · 조 추첨 · 하루 훈련 · 구단주 평가</p></div>
+    <div class="step now" data-edit><small>4단계 · 진행 중</small><strong>완성</strong><p>5시즌 커리어 · 밸런스 테스트 · UI/UX 다듬기</p></div>
+  </div>
+  <div class="note" data-edit>초기 발표의 "앞으로의 계획 ①·②"에 적었던 항목은 모두 구현 완료</div>
+</section>
+
+<!-- 4. 프로그램 구조 -->
+<section class="slide">
+  <div class="kicker">03</div>
+  <h2 data-edit>프로그램 구조</h2>
+  <p class="lead" data-edit>계획대로 역할별 패키지 분리 · 화면(gui)은 계산을 하지 않고 보여 주기만</p>
+  <div class="flow">
+    <div class="step" data-edit><small>data · 3개</small><strong>데이터</strong><p>CSV 읽기, 빈 자리 선수 자동 생성</p></div>
+    <div class="step" data-edit><small>model · 16개</small><strong>모델</strong><p>선수 · 팀 · 포메이션 · 역할 · 전술</p></div>
+    <div class="step" data-edit><small>sim · 8개</small><strong>경기 엔진</strong><p>득점 계산 · 라이브 경기 · 중계 문장</p></div>
+    <div class="step" data-edit><small>game · 13개</small><strong>시즌 규칙</strong><p>시즌 · 조 추첨 · 평가 · 엔딩</p></div>
+    <div class="step now" data-edit><small>gui · 25개</small><strong>화면</strong><p>Swing 화면 · 애니메이션</p></div>
+  </div>
+  <div class="grid g3" style="margin-top:22px">
+    <div class="card" data-edit><span class="tag t-blue">게임 창</span><p><b>게임 실행.vbs</b> → Swing 창</p></div>
+    <div class="card" data-edit><span class="tag t-gold">웹</span><p><b>웹으로 실행.vbs</b> → 내장 서버 + CheerpJ로 같은 jar를 브라우저에서</p></div>
+    <div class="card" data-edit><span class="tag t-green">콘솔</span><p><b>--auto --seed</b> 옵션으로 시즌 자동 진행 · 결과 재현 테스트</p></div>
+  </div>
+</section>
+
+<!-- 5. 경기 ① 중계 -->
+<section class="slide">
+  <div class="kicker">04</div>
+  <h2 data-edit>경기 ① 라이브 중계</h2>
+  <p class="lead" data-edit>0분부터 추가시간까지 문자 중계 + 경기장 화면이 함께 진행</p>
+  <div class="split">
+    <svg viewBox="0 0 420 270" style="width:100%;border-radius:14px" aria-label="경기장 예시">
+      <rect width="420" height="270" rx="14" fill="#2e7d4f"/>
+      <g fill="#348a58"><rect x="16" y="12" width="39" height="246"/><rect x="94" y="12" width="39" height="246"/><rect x="172" y="12" width="39" height="246"/><rect x="250" y="12" width="39" height="246"/><rect x="328" y="12" width="39" height="246"/></g>
+      <g fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.6"><rect x="16" y="12" width="388" height="246"/><line x1="210" y1="12" x2="210" y2="258"/><circle cx="210" cy="135" r="38"/><rect x="16" y="66" width="54" height="138"/><rect x="350" y="66" width="54" height="138"/></g>
+      <g font-family="Malgun Gothic" font-weight="800" font-size="12" text-anchor="middle">
+        <g fill="#ef0107"><circle cx="70" cy="135" r="12" fill="#84cc16"/><circle cx="110" cy="70" r="12"/><circle cx="110" cy="115" r="12"/><circle cx="110" cy="160" r="12"/><circle cx="110" cy="205" r="12"/><circle cx="160" cy="90" r="12"/><circle cx="160" cy="135" r="12"/><circle cx="160" cy="180" r="12"/><circle cx="195" cy="75" r="12"/><circle cx="200" cy="135" r="12"/><circle cx="195" cy="195" r="12"/></g>
+        <g fill="#fff"><text x="70" y="139" fill="#1a2e05">1</text><text x="110" y="74">3</text><text x="110" y="119">5</text><text x="110" y="164">4</text><text x="110" y="209">2</text><text x="160" y="94">8</text><text x="160" y="139">6</text><text x="160" y="184">10</text><text x="195" y="79">11</text><text x="200" y="139">9</text><text x="195" y="199">7</text></g>
+        <g fill="#f5f5f5" stroke="#9aa3b2"><circle cx="350" cy="135" r="12" fill="#f97316" stroke="none"/><circle cx="310" cy="70" r="12"/><circle cx="310" cy="115" r="12"/><circle cx="310" cy="160" r="12"/><circle cx="310" cy="205" r="12"/><circle cx="265" cy="95" r="12"/><circle cx="265" cy="135" r="12"/><circle cx="265" cy="175" r="12"/><circle cx="235" cy="70" r="12"/><circle cx="232" cy="135" r="12"/><circle cx="235" cy="200" r="12"/></g>
+        <g fill="#1f2937"><text x="350" y="139" fill="#431407">1</text><text x="310" y="74">2</text><text x="310" y="119">4</text><text x="310" y="164">5</text><text x="310" y="209">3</text><text x="265" y="99">6</text><text x="265" y="139">8</text><text x="265" y="179">10</text><text x="235" y="74">7</text><text x="232" y="139">9</text><text x="235" y="204">11</text></g>
+      </g>
+      <circle cx="214" cy="146" r="5" fill="#fff" stroke="#1f2937"/>
+      <circle cx="200" cy="135" r="16" fill="none" stroke="#fbbf24" stroke-width="2.4"/>
+    </svg>
+    <div>
+      <ul class="check" data-edit>
+        <li>선수 22명이 <b>구단 유니폼 색 + 등번호</b>로 실제 포메이션 위치에서 움직임</li>
+        <li>슈팅·골·선방 장면에 해당 선수 표시, 공이 골문으로 이동</li>
+        <li>전반·후반 진영 교체, 골이 나면 잠깐 멈춤</li>
+        <li>중계 속도 1x / 2x / 4x, 일시정지, 결과 바로 보기</li>
+        <li>중계 문장은 실제 결과(득점자·스코어)와 항상 일치</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 6. 경기 ② 전술 -->
+<section class="slide">
+  <div class="kicker">04</div>
+  <h2 data-edit>경기 ② 전술과 선수 기용</h2>
+  <p class="lead" data-edit>감독의 선택이 숫자로 결과에 반영되도록</p>
+  <div class="grid g3">
+    <div class="card" data-edit><span class="tag t-blue">포메이션</span><h3>13종 + 사용자 지정</h3><p>전술판의 점 26곳에 선수를 끌어다 놓아 자유 배치</p></div>
+    <div class="card" data-edit><span class="tag t-blue">포지션 범용성</span><h3>주 100% · 보조 97%</h3><p>자리마다 뛸 수 있는 선수만, 적합도 순으로 추천</p></div>
+    <div class="card" data-edit><span class="tag t-blue">선수 역할</span><h3>자리별 역할 선택</h3><p>포처, 인버티드 윙어, 딥라잉 플레이메이커 등 득점·실점·체력에 영향</p></div>
+  </div>
+  <div class="bars" style="margin-top:14px">
+    <div class="row" data-edit><span class="name">압박 강도</span><span class="bar"><i style="width:80%"></i></span><span class="desc">실점 −4%/단계 · 체력 소모 +3</span></div>
+    <div class="row" data-edit><span class="name">템포</span><span class="bar"><i style="width:60%"></i></span><span class="desc">득점·실점 모두 +3%/단계</span></div>
+    <div class="row" data-edit><span class="name">수비 라인</span><span class="bar"><i style="width:60%"></i></span><span class="desc">득점 +3% · 실점 +4%/단계</span></div>
+    <div class="row" data-edit><span class="name">공격 폭</span><span class="bar"><i style="width:40%"></i></span><span class="desc">득점 +2%/단계 · 공중볼 효과 확대</span></div>
+  </div>
+</section>
+
+<!-- 7. 경기 ③ 운영 -->
+<section class="slide">
+  <div class="kicker">04</div>
+  <h2 data-edit>경기 ③ 교체 · 체력 · 승부차기</h2>
+  <p class="lead" data-edit>경기 도중에도 감독이 개입할 수 있게</p>
+  <div class="grid g2">
+    <div class="card" data-edit><span class="tag t-green">교체</span><h3>3번의 기회 · 최대 5명</h3><p>교체한 순간부터 남은 시간을 새 라인업으로 다시 시뮬레이션. 이미 나온 골·기록은 유지</p></div>
+    <div class="card" data-edit><span class="tag t-green">체력</span><h3>실시간 체력 반영</h3><p>체력 1% 감소 ≈ 경기력 0.6% 감소. 압박이 강할수록 빨리 지침</p></div>
+    <div class="card" data-edit><span class="tag t-green">경기 중 전술 변경</span><h3>운영 · 팀 스타일 변경</h3><p>매우 공격적 ~ 매우 수비적, 게겐프레싱·역습 등. 횟수 제한 없음</p></div>
+    <div class="card" data-edit><span class="tag t-green">승부차기</span><h3>키커 한 명씩</h3><p>슛 능력 순 5명 + 서든데스, 성공률 55~92% (키커 vs 골키퍼)</p></div>
+  </div>
+</section>
+
+<!-- 8. 리그 구조 -->
+<section class="slide">
+  <div class="kicker">05</div>
+  <h2 data-edit>리그 ① 디비전 + 포스트시즌</h2>
+  <p class="lead" data-edit>기존 축구 게임에 없는 진행 방식 (MLS 컨퍼런스 방식 참고)</p>
+  <div class="flow">
+    <div class="step" data-edit><small>8월</small><strong>조 추첨</strong><p>전력 비슷한 두 팀씩 9개 포트 → A조·B조</p></div>
+    <div class="step" data-edit><small>8월 ~ 3월</small><strong>정규 시즌</strong><p>같은 조 16경기 + 다른 조 9경기 = 25경기</p></div>
+    <div class="step" data-edit><small>4월</small><strong>플레이오프</strong><p>조 4·5위 홈 앤드 어웨이 · 1~3위는 8강 직행</p></div>
+    <div class="step" data-edit><small>4 ~ 5월</small><strong>8강 · 4강</strong><p>홈 앤드 어웨이 합계 · 같으면 승부차기</p></div>
+    <div class="step now" data-edit><small>5월 말</small><strong>결승</strong><p>중립 구장 단판</p></div>
+  </div>
+  <div class="note" data-edit>밸런스 조 추첨: 200시즌 시뮬레이션에서 두 조 평균 전력 차이 최대 1.1 (200점 만점)</div>
+</section>
+
+<!-- 9. 시즌 운영 -->
+<section class="slide">
+  <div class="kicker">05</div>
+  <h2 data-edit>리그 ② 시즌 운영과 커리어</h2>
+  <p class="lead" data-edit>경기 사이의 하루하루도 감독이 결정</p>
+  <div class="grid g3">
+    <div class="card" data-edit><h3>하루 활동</h3><p>훈련 / 가벼운 훈련 / 회복 / 휴식. 팀 훈련 15종, 개인 훈련·새 포지션 익히기</p></div>
+    <div class="card" data-edit><h3>구단주 평가</h3><p>3경기마다 상대 등급 기준 기대 승점과 비교 → 특전 선택 또는 경고</p></div>
+    <div class="card" data-edit><h3>팬 · 언론 반응</h3><p>결과·상대 등급·멀티골에 따라 반응과 기사가 소식 탭에</p></div>
+    <div class="card" data-edit><h3>감독 프로필</h3><p>코칭 스타일 6종 (전략가·지략가·체계구축가·동기부여가·육성가·실리주의자)</p></div>
+    <div class="card" data-edit><h3>5시즌 커리어</h3><p>나이·성장·노쇠 반영, 시설·전술 유지. 경질 시 즉시 종료</p></div>
+    <div class="card" data-edit><h3>엔딩</h3><p>우승·목표 달성 횟수에 따라 5가지 엔딩 + 시즌별 기록</p></div>
+  </div>
+</section>
+
+<!-- 10. 핵심 알고리즘 -->
+<section class="slide">
+  <div class="kicker">06</div>
+  <h2 data-edit>핵심 알고리즘</h2>
+  <p class="lead" data-edit>경기 결과는 확률이지만, 감독의 선택이 그 확률을 바꾼다</p>
+  <div class="grid g2">
+    <div class="card" data-edit>
+      <span class="tag t-blue">경기력</span><h3>선발 11명 + 팀 상태</h3>
+      <div class="formula">경기력 = 자리별 능력 평균<br>× (1 + 사기 + 훈련 + 시설 + 국적 호흡)</div>
+      <p style="margin-top:10px">사기 ±8% · 훈련 −5~+7% · 시설 +1~5% · 국적 호흡 최대 +3%</p>
+    </div>
+    <div class="card" data-edit>
+      <span class="tag t-gold">득점</span><h3>포아송 분포</h3>
+      <div class="formula">기대 득점 = 전력 비 × 운영 × 팀 지시<br>× 역할 × 체력 × 상성</div>
+      <p style="margin-top:10px">공격형 &gt; 밸런스형 &gt; 수비형 &gt; 공격형 · 상성에서 이기면 기대 득점 +25%</p>
+    </div>
+  </div>
+  <div class="note" data-edit>밸런스 검증: 300시즌 시뮬레이션에서 한 가지 전술이 항상 이기지 않도록 조정 · 코칭 스타일 360시즌 테스트로 평균 0.4~0.9계단 향상</div>
+</section>
+
+<!-- 11. UI/UX -->
+<section class="slide">
+  <div class="kicker">07</div>
+  <h2 data-edit>최근 작업: UI/UX 다듬기</h2>
+  <p class="lead" data-edit>계산은 그대로, 보이는 화면을 직관적으로</p>
+  <div class="split">
+    <div>
+      <div class="vs">
+        <div class="team"><div class="dot" style="background:#ef0107"></div>런던 거너스</div>
+        <div class="mid">VS</div>
+        <div class="team"><div class="dot" style="background:#f5f5f5"></div>로스 블랑코스</div>
+      </div>
+      <div class="cmp">
+        <div class="line"><b>168.2</b><span class="track"><i style="width:49%"></i></span><b style="text-align:right">174.9</b></div>
+        <div style="text-align:center">예상 경기력 비교</div>
+      </div>
+      <div class="result"><small>경기 종료 · FULL TIME</small><b>승리!</b><span class="score">2 : 1</span></div>
+    </div>
+    <ul class="check" style="margin-top:0" data-edit>
+      <li><b>매치 프리뷰</b>: 글 대신 상대·D-day·전력 비교 막대·스카우트 조언 카드</li>
+      <li><b>경기 종료 카드</b>: 승리 / 무승부 / 패배와 최종 스코어·득점자</li>
+      <li><b>유니폼 + 등번호</b>: 구단 고유 색, 내 팀 색은 직접 선택</li>
+      <li><b>애니메이션</b>: 화면 전환, 버튼·탭·게이지 (짧고 과하지 않게)</li>
+      <li><b>편의</b>: 경기일까지 ▶▶ 버튼, Space 키 진행, 다크 모드 가독성 수정</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 12. 검증 -->
+<section class="slide">
+  <div class="kicker">08</div>
+  <h2 data-edit>테스트와 검증</h2>
+  <p class="lead" data-edit>바꿔도 깨지지 않는지 확인하는 방법</p>
+  <table data-edit>
+    <tr><th>무엇을</th><th>어떻게</th><th>결과</th></tr>
+    <tr><td>경기 결과 재현</td><td>콘솔 <code>--auto --seed 42</code>로 시즌 전체 자동 진행</td><td>화면 수정 전후 결과 동일 → 게임 로직 변화 없음 확인</td></tr>
+    <tr><td>실행 환경</td><td><code>--release 17</code>로 jar 빌드</td><td>Java 17 이상 PC · 웹(CheerpJ)에서 같은 jar 실행</td></tr>
+    <tr><td>배포</td><td>git clone 후 vbs 더블클릭</td><td>빌드 없이 바로 실행 확인</td></tr>
+    <tr><td>데이터</td><td>CSV 줄마다 검사, 잘못된 줄은 건너뛰고 안내</td><td>포지션 부족 시 자동 생성 (현재 경고 0건)</td></tr>
+    <tr><td>밸런스</td><td>수백 시즌 자동 시뮬레이션</td><td>전술·코칭 스타일·조 추첨 치우침 조정</td></tr>
+  </table>
+</section>
+
+<!-- 13. 남은 계획 -->
+<section class="slide">
+  <div class="kicker">09</div>
+  <h2 data-edit>최종 발표까지 남은 계획</h2>
+  <p class="lead" data-edit>새 기능보다는 완성도</p>
+  <div class="grid g3">
+    <div class="card" data-edit><span class="tag t-red">추가</span><h3>저장 / 불러오기</h3><p>5시즌 커리어를 이어서 할 수 있도록 진행 상황 저장</p></div>
+    <div class="card" data-edit><span class="tag t-gold">조정</span><h3>밸런스 다듬기</h3><p>등급별 성적, 성장 속도, 부상 빈도 추가 테스트</p></div>
+    <div class="card" data-edit><span class="tag t-blue">준비</span><h3>시연 준비</h3><p>최종 발표 때 한 시즌을 짧게 보여 줄 시연 흐름 정리</p></div>
+  </div>
+  <div class="note" data-edit>최종 발표: 실제 게임 시연 (구단 선택 → 전술 → 라이브 중계 → 결과 → 포스트시즌)</div>
+</section>
+
+<!-- 14. 마무리 -->
+<section class="slide">
+  <div class="end">
+    <h1 data-edit>감사합니다</h1>
+    <p class="lead" style="margin-top:20px" data-edit>질문 받겠습니다</p>
+    <div class="people" data-edit><span class="person">배찬익</span><span class="person">김태일</span></div>
+  </div>
+</section>
+
+</div></div>
+
+<div id="bar">
+  <button id="prev" title="이전 (←)">◀</button>
+  <span class="count" id="count">1 / 1</span>
+  <button id="next" title="다음 (→)">▶</button>
+  <span class="sep"></span>
+  <button id="edit" title="글자를 눌러 바로 고칠 수 있습니다 (E)">✏️ 편집</button>
+  <button id="save" title="고친 내용을 새 HTML 파일로 저장 (Ctrl+S)">💾 저장</button>
+  <button id="present" title="전체 화면 발표 (F)">⛶ 발표</button>
+</div>
+<div id="toast"></div>
+
+<script>
+(function () {
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const deck = document.getElementById('deck');
+  const count = document.getElementById('count');
+  const editBtn = document.getElementById('edit');
+  const toast = document.getElementById('toast');
+  let index = 0;
+  let editing = false;
+
+  function decorate() {
+    slides.forEach((s, i) => {
+      if (i > 0 && !s.querySelector('.page')) {
+        const brand = document.createElement('div');
+        brand.className = 'brand';
+        brand.textContent = 'SUPER LEAGUE MANAGER · 중간 발표';
+        const page = document.createElement('div');
+        page.className = 'page';
+        page.textContent = (i + 1) + ' / ' + slides.length;
+        s.append(brand, page);
+      }
+    });
+  }
+  decorate();
+
+  function fit() {
+    const scale = Math.min(window.innerWidth / 1340, window.innerHeight / 800);
+    deck.style.transform = 'scale(' + scale + ')';
+  }
+
+  function show(i) {
+    index = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, k) => s.classList.toggle('active', k === index));
+    count.textContent = (index + 1) + ' / ' + slides.length;
+    try { history.replaceState(null, '', '#' + (index + 1)); } catch (e) {}
+  }
+
+  function notify(text) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(notify.t);
+    notify.t = setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+
+  function setEditing(on) {
+    editing = on;
+    document.querySelectorAll('[data-edit]').forEach(el => {
+      if (on) el.setAttribute('contenteditable', 'true');
+      else el.removeAttribute('contenteditable');
+    });
+    editBtn.classList.toggle('on', on);
+    editBtn.textContent = on ? '✅ 편집 끝' : '✏️ 편집';
+    if (on) notify('글자를 눌러 고치세요 · 끝나면 💾 저장');
+  }
+
+  function save() {
+    const wasEditing = editing;
+    setEditing(false);
+    slides.forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.brand, .page').forEach(el => el.remove());
+    const html = '<!doctype html>\n' + document.documentElement.outerHTML;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '중간발표.html';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    decorate();
+    show(index);
+    setEditing(wasEditing);
+    notify('다운로드 폴더에 저장했습니다 · 기존 파일과 바꿔 쓰세요');
+  }
+
+  function present() {
+    const el = document.documentElement;
+    if (!document.fullscreenElement) {
+      setEditing(false);
+      (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => {});
+    } else {
+      document.exitFullscreen();
+    }
+  }
+
+  document.addEventListener('fullscreenchange', () => {
+    document.body.classList.toggle('present', !!document.fullscreenElement);
+    fit();
+  });
+
+  document.getElementById('prev').onclick = () => show(index - 1);
+  document.getElementById('next').onclick = () => show(index + 1);
+  editBtn.onclick = () => setEditing(!editing);
+  document.getElementById('save').onclick = save;
+  document.getElementById('present').onclick = present;
+
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      save();
+      return;
+    }
+    const typing = document.activeElement && document.activeElement.isContentEditable;
+    if (typing) {
+      if (e.key === 'Escape') document.activeElement.blur();
+      return;
+    }
+    if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); show(index + 1); }
+    else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); show(index - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key.toLowerCase() === 'e') setEditing(!editing);
+    else if (e.key.toLowerCase() === 'f') present();
+  });
+
+  deck.addEventListener('click', e => {
+    if (editing || e.target.closest('a')) return;
+    const rect = deck.getBoundingClientRect();
+    show(e.clientX > rect.left + rect.width / 2 ? index + 1 : index - 1);
+  });
+
+  window.addEventListener('resize', fit);
+  fit();
+  const start = parseInt((location.hash || '#1').slice(1), 10);
+  show(isNaN(start) ? 0 : start - 1);
+})();
+</script>
+</body>
+</html>

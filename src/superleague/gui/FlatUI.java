@@ -40,9 +40,31 @@ public final class FlatUI {
             tabPane.setOpaque(false);
         }
 
+        private Anim.Value barX;
+        private Anim.Value barW;
+
         @Override
         protected void paintTabArea(Graphics g, int tabPlacement, int selectedIndex) {
             super.paintTabArea(g, tabPlacement, selectedIndex);
+            if (selectedIndex < 0 || rects == null || selectedIndex >= rects.length) {
+                return;
+            }
+            Rectangle r = rects[selectedIndex];
+            double tx = r.x + 8;
+            double tw = Math.max(0, r.width - 16);
+            if (barX == null) {
+                barX = new Anim.Value(tabPane, tx, 240);
+                barW = new Anim.Value(tabPane, tw, 240);
+            } else {
+                barX.animateTo(tx);
+                barW.animateTo(tw);
+            }
+            // the blue underline glides to the newly selected tab
+            Graphics2D g2 = Widgets.smooth(g);
+            g2.setColor(Theme.ACCENT);
+            g2.fillRoundRect((int) Math.round(barX.get()), r.y + r.height - 3,
+                    (int) Math.round(barW.get()), 3, 3, 3);
+            g2.dispose();
         }
 
         @Override
@@ -59,10 +81,7 @@ public final class FlatUI {
         @Override
         protected void paintTabBorder(Graphics g, int placement, int index, int x, int y, int w, int h,
                                       boolean selected) {
-            if (selected) {
-                g.setColor(Theme.ACCENT);
-                g.fillRect(x + 8, y + h - 3, w - 16, 3);
-            }
+            // underline is drawn (animated) in paintTabArea
         }
 
         @Override
@@ -262,6 +281,8 @@ public final class FlatUI {
     }
 
     public static class Progress extends BasicProgressBarUI {
+        private Anim.Value fill;
+
         public static ComponentUI createUI(JComponent c) {
             return new Progress();
         }
@@ -275,7 +296,13 @@ public final class FlatUI {
             int w = c.getWidth();
             g2.setColor(Theme.TRACK);
             g2.fillRoundRect(0, y, w, h, h, h);
-            double frac = (bar.getValue() - bar.getMinimum()) / (double) Math.max(1, bar.getMaximum() - bar.getMinimum());
+            double target = (bar.getValue() - bar.getMinimum()) / (double) Math.max(1, bar.getMaximum() - bar.getMinimum());
+            if (fill == null) {
+                fill = new Anim.Value(bar, target, 450);
+            } else {
+                fill.animateTo(target);
+            }
+            double frac = fill.get();
             int fw = (int) Math.round(w * frac);
             if (fw > 0) {
                 g2.setColor(bar.getForeground());

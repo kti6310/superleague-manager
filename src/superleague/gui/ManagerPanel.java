@@ -51,9 +51,7 @@ class ManagerPanel extends JPanel {
         nameRow.setOpaque(false);
         nameRow.add(Theme.label("감독 이름", Font.BOLD, 15, Theme.TEXT));
         nameField.setFont(Theme.font(Font.PLAIN, 15));
-        nameField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Theme.BORDER_STRONG),
-                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+        Theme.styleInput(nameField);
         nameField.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) {
                 update();
@@ -120,6 +118,20 @@ class ManagerPanel extends JPanel {
         JLabel effect = Theme.label("<html>" + style.effect + "</html>", Font.BOLD, 13, Theme.ACCENT);
         card.add(effect, BorderLayout.SOUTH);
         card.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                if (selected != style) {
+                    card.setLine(Theme.ACCENT_BRIGHT, 1);
+                }
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                if (selected != style) {
+                    card.setLine(Theme.BORDER, 1);
+                }
+            }
+
             @Override
             public void mouseClicked(MouseEvent e) {
                 selected = style;

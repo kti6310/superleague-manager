@@ -21,8 +21,13 @@ import superleague.game.Season;
 import superleague.model.Team;
 
 final class DrawDialog extends JDialog {
-    private static final Color SLOT = new Color(0xF1F5F9);
-    private static final Color PICK = new Color(0xFEF3C7);
+    // theme-aware: these used to be fixed light colours, which turned pots white in dark mode
+    private static Color slotColor() {
+        return new Color(Theme.isDark() ? 0x1F2838 : 0xF1F5F9);
+    }
+    private static Color pickColor() {
+        return new Color(Theme.isDark() ? 0x3A3218 : 0xFEF3C7);
+    }
     private final GroupDraw draw;
     private final Team userTeam;
     private final JLabel[] potRows;
@@ -121,16 +126,16 @@ final class DrawDialog extends JDialog {
             return;
         }
         if (revealed > 0) {
-            potRows[revealed - 1].setBackground(SLOT);
+            potRows[revealed - 1].setBackground(slotColor());
         }
         int i = revealed++;
-        potRows[i].setBackground(PICK);
+        potRows[i].setBackground(pickColor());
         fill(slotsA[i], draw.groupA().get(i));
         fill(slotsB[i], draw.groupB().get(i));
         status.setText(String.format("포트 %d: %s → A조, %s → B조", i + 1, draw.groupA().get(i).name(), draw.groupB().get(i).name()));
         if (revealed == n) {
             timer.stop();
-            potRows[i].setBackground(SLOT);
+            potRows[i].setBackground(slotColor());
             String mine = draw.groupA().contains(userTeam) ? "A조" : "B조";
             status.setText(String.format("추첨 완료 · 우리 팀은 %s · 평균 전력 A조 %.1f / B조 %.1f",
                     mine, draw.averageA(), draw.averageB()));
@@ -160,7 +165,7 @@ final class DrawDialog extends JDialog {
     private static JLabel slot(String text) {
         JLabel l = Theme.label(text, Font.PLAIN, 14, Theme.MUTED);
         l.setOpaque(true);
-        l.setBackground(SLOT);
+        l.setBackground(slotColor());
         l.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
         l.setPreferredSize(new Dimension(260, 36));
         return l;

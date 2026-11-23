@@ -71,6 +71,8 @@ class GamePanel extends JPanel {
     private final Widgets.SeasonProgress seasonProgress = new Widgets.SeasonProgress();
     private final JButton playButton = Theme.primaryButton("경기 진행  ▶");
     private final JButton autoButton = Theme.secondaryButton("시즌 끝까지 자동 진행");
+    private String lastResultLine;
+    private final JButton toMatchButton = Theme.secondaryButton("경기일까지  ▶▶");
 
     private final JTabbedPane tabs = new JTabbedPane();
     private final JPanel resultPanel = new JPanel(new BorderLayout(0, 12));
@@ -184,7 +186,8 @@ class GamePanel extends JPanel {
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getViewport().setBackground(Theme.BG);
 
-        JPanel actions = new JPanel(new GridLayout(1, 2, 8, 0));
+        // top: main button (다음 날 / 경기 진행), bottom: 경기일까지 ▶▶ and 끝까지 자동
+        JPanel actions = new JPanel(new BorderLayout(0, 8));
         actions.setBackground(Theme.BG);
         actions.setBorder(BorderFactory.createEmptyBorder(8, 16, 16, 8));
         playButton.addActionListener(e -> {
@@ -194,10 +197,27 @@ class GamePanel extends JPanel {
                 advanceDays(false);
             }
         });
+        playButton.setToolTipText("단축키: Space");
+        toMatchButton.addActionListener(e -> advanceDays(true));
+        toMatchButton.setToolTipText("훈련 계획대로 날짜를 넘겨 다음 경기 당일로 갑니다");
         autoButton.addActionListener(e -> autoToEnd());
         autoButton.setText("끝까지 자동");
-        actions.add(playButton);
-        actions.add(autoButton);
+        JPanel secondary = new JPanel(new GridLayout(1, 2, 8, 0));
+        secondary.setOpaque(false);
+        secondary.add(toMatchButton);
+        secondary.add(autoButton);
+        actions.add(playButton, BorderLayout.NORTH);
+        actions.add(secondary, BorderLayout.CENTER);
+        // Space anywhere in the game window = press the main button (unless a focused control uses Space itself)
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(javax.swing.KeyStroke.getKeyStroke("SPACE"), "mainAction");
+        getActionMap().put("mainAction", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (playButton.isEnabled() && playButton.isShowing()) {
+                    playButton.doClick();
+                }
+            }
+        });
 
         JPanel column = new JPanel(new BorderLayout());
         column.setBackground(Theme.BG);
@@ -296,6 +316,7 @@ class GamePanel extends JPanel {
     private JComponent buildOpponent() {
         oppXi.setOpaque(false);
         JLabel xiTitle = Theme.label("예상 선발", Font.BOLD, 12, Theme.MUTED);
+        oppTactic.setVisible(false); // shown as chips in the match preview instead
         return stack(oppName, oppInfo, oppTactic, oppScout, xiTitle, oppXi);
     }
 
@@ -312,10 +333,8 @@ class GamePanel extends JPanel {
         Team opp = next.opponentOf(team);
         opp.autoPick();
         oppName.setText(opp.name());
-        oppInfo.setText(String.format("%s등급 · %s · %s · %s", opp.tier().name(),
-                season.positionLabel(opp) + " · 승점 " + opp.points(),
-                next.home() == team ? "우리 홈" : "상대 홈",
-                String.format("%d승 %d무 %d패", opp.won(), opp.drawn(), opp.lost())));
+        oppInfo.setText(String.format("%s등급 · %s · %s", opp.tier().name(), season.positionLabel(opp),
+                next.home() == team ? "우리 홈" : "상대 홈"));
         Tactic style = opp.preferredTactic();
         oppTactic.setText(String.format("<html>운영 <b>%s</b> · 포메이션 <b>%s</b> · 팀 지시 <b>%s</b></html>",
                 style.label(), opp.formation(), superleague.model.Instructions.Style.of(opp.instructions()).label));
@@ -562,6 +581,7 @@ class GamePanel extends JPanel {
         playButton.setEnabled(running);
         playButton.setText(season.isMatchDay() ? "경기 진행  ▶" : "다음 날  ▶");
         autoButton.setEnabled(running);
+        toMatchButton.setEnabled(running && !season.isMatchDay());
         intensitySeg.setEnabled(running);
         tacticSeg.setEnabled(running);
     }
@@ -624,6 +644,7 @@ class GamePanel extends JPanel {
             news.forEach(this::log);
         } while (toMatchDay && !season.isMatchDay() && !season.isFinished());
         refresh();
+        showPreview(); // after a match the result stays up; the next day shows the next match preview
     }
 
     private void playRound() {
@@ -738,11 +759,19 @@ class GamePanel extends JPanel {
     }
 
     private void showPlaceholderResult() {
+        lastResultLine = null;
+        showPreview();
+    }
+
+    /** Pre-match card (opponent, D-day, strength comparison) instead of a block of text. */
+    private void showPreview() {
         resultPanel.removeAll();
-        JLabel hint = Theme.label("<html><div style='text-align:center'>훈련 강도와 전술을 정한 뒤<br>"
-                + "왼쪽의 <b>경기 진행</b>을 누르세요.</div></html>", Font.PLAIN, 15, Theme.MUTED);
-        hint.setHorizontalAlignment(JLabel.CENTER);
-        resultPanel.add(hint, BorderLayout.CENTER);
+        resultPanel.add(new MatchPreview(season, team, lastResultLine, () -> {
+            int i = tabs.indexOfTab("전술");
+            if (i >= 0) {
+                tabs.setSelectedIndex(i);
+            }
+        }), BorderLayout.NORTH);
         resultPanel.revalidate();
         resultPanel.repaint();
     }
@@ -765,6 +794,9 @@ class GamePanel extends JPanel {
         }
         int gf = r.goalsFor(team);
         int ga = r.goalsAgainst(team);
+        lastResultLine = String.format("지난 경기 · %s  %s %d : %d %s  (%s)", Season.roundLabel(report.round() - 1),
+                r.fixture().home().name(), r.homeGoals(), r.awayGoals(), r.fixture().away().name(),
+                gf > ga ? "승리" : gf == ga ? "무승부" : "패배");
         Color tone = gf > ga ? Theme.GOOD : gf == ga ? Theme.MUTED : Theme.BAD;
         String outcome = gf > ga ? "승리" : gf == ga ? "무승부" : "패배";
 
@@ -842,7 +874,7 @@ class GamePanel extends JPanel {
             sb.append("</html>");
             JLabel news = Theme.label(sb.toString(), Font.PLAIN, 13, Theme.TEXT);
             news.setOpaque(true);
-            news.setBackground(new Color(0xFFF7E6));
+            news.setBackground(Theme.tint(0xFFF7E6, 0x3A3218));
             news.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
             resultPanel.add(news, BorderLayout.SOUTH);
         }

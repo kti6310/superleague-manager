@@ -41,6 +41,7 @@ final class LiveMatchDialog extends JDialog {
     private final LiveMatch live;
     private MatchResult result;
     private final Team userTeam;
+    private final Kits.Match kits;
     private List<MatchEvent> events;
     private int lastKey = -1;
     private int[] lastStep = {0, 0};
@@ -78,6 +79,7 @@ final class LiveMatchDialog extends JDialog {
         this.live = live;
         this.result = result;
         this.userTeam = userTeam;
+        this.kits = Kits.forMatch(result.fixture().home(), result.fixture().away());
         this.events = result.events();
         buildSteps();
 
@@ -92,10 +94,10 @@ final class LiveMatchDialog extends JDialog {
         legend.setOpaque(false);
         legend.add(Theme.label("경기장", Font.BOLD, 13, Theme.TEXT));
         legend.add(Box.createHorizontalStrut(8));
-        legend.add(new StoneIcon(true, 6));
+        legend.add(new StoneIcon(kits.home(), 6));
         legend.add(Theme.label(result.fixture().home().name() + " (홈)", Font.PLAIN, 12, Theme.MUTED));
         legend.add(Box.createHorizontalStrut(6));
-        legend.add(new StoneIcon(false, 6));
+        legend.add(new StoneIcon(kits.away(), 6));
         legend.add(Theme.label(result.fixture().away().name() + " (원정)", Font.PLAIN, 12, Theme.MUTED));
         timelineWrap.add(legend, BorderLayout.NORTH);
         timelineWrap.add(pitch, BorderLayout.CENTER);
@@ -223,7 +225,7 @@ final class LiveMatchDialog extends JDialog {
         tag.setAlignmentX(home ? RIGHT_ALIGNMENT : LEFT_ALIGNMENT);
         text.add(name);
         text.add(tag);
-        StoneIcon stone = new StoneIcon(home, 11);
+        StoneIcon stone = new StoneIcon(home ? kits.home() : kits.away(), 11);
         if (home) {
             p.add(text);
             p.add(stone);
@@ -493,13 +495,20 @@ final class LiveMatchDialog extends JDialog {
         skipButton.setEnabled(false);
         closeButton.setEnabled(true);
         closeButton.requestFocusInWindow();
+        if (result.fixture().involves(userTeam)) {
+            // big full-time card: win / draw / loss, final score and scorers
+            MatchResultOverlay.show(getRootPane(), result, userTeam, kits, () -> {
+                pitch.stop();
+                dispose();
+            });
+        }
     }
 
     private void reveal(MatchEvent e) {
         homeScore.setText(String.valueOf(e.homeScore()));
         awayScore.setText(String.valueOf(e.awayScore()));
         int width = Math.max(200, feedScroll.getViewport().getWidth() - 190);
-        feed.add(new FeedRow(e, width));
+        feed.add(new FeedRow(e, width, kits));
         feed.revalidate();
         SwingUtilities.invokeLater(() -> {
             javax.swing.JScrollBar bar = feedScroll.getVerticalScrollBar();
@@ -600,11 +609,11 @@ final class LiveMatchDialog extends JDialog {
     }
 
     private static class StoneIcon extends JComponent {
-        private final boolean black;
+        private final Kits.Kit kit;
         private final int r;
 
-        StoneIcon(boolean black, int r) {
-            this.black = black;
+        StoneIcon(Kits.Kit kit, int r) {
+            this.kit = kit;
             this.r = r;
             setPreferredSize(new Dimension(r * 2 + 4, r * 2 + 4));
         }
@@ -612,31 +621,32 @@ final class LiveMatchDialog extends JDialog {
         @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = Widgets.smooth(g);
-            PitchView.drawStone(g2, getWidth() / 2, getHeight() / 2, r, black, false);
+            PitchView.drawKitDot(g2, getWidth() / 2, getHeight() / 2 - 1, r, kit);
             g2.dispose();
         }
     }
 
     private static class FeedRow extends JPanel {
-        FeedRow(MatchEvent e, int textWidth) {
+        FeedRow(MatchEvent e, int textWidth, Kits.Match kits) {
             super(new BorderLayout(10, 0));
             boolean goal = e.type() == MatchEvent.Type.GOAL;
             boolean key = e.isKey();
             boolean milestone = e.type() == MatchEvent.Type.KICKOFF || e.type() == MatchEvent.Type.HALFTIME
                     || e.type() == MatchEvent.Type.FULLTIME;
             setOpaque(true);
-            setBackground(goal ? new Color(0xFFF4D6) : key ? new Color(0xF4F6FA) : milestone ? Theme.ACCENT_SOFT : Theme.CARD);
+            setBackground(goal ? Theme.tint(0xFFF4D6, 0x3A3218) : key ? Theme.tint(0xF4F6FA, 0x1F2838)
+                    : milestone ? Theme.ACCENT_SOFT : Theme.CARD);
             setBorder(BorderFactory.createEmptyBorder(7, 14, 7, 14));
             setAlignmentX(LEFT_ALIGNMENT);
 
             String clockText = e.type() == MatchEvent.Type.HALFTIME ? "HT" : e.type() == MatchEvent.Type.FULLTIME ? "FT" : e.clock();
-            JLabel minute = Theme.label(clockText, Font.BOLD, 12, goal ? new Color(0xB45309) : Theme.MUTED);
+            JLabel minute = Theme.label(clockText, Font.BOLD, 12, goal ? Theme.tint(0xB45309, 0xF59E0B) : Theme.MUTED);
             minute.setPreferredSize(new Dimension(44, 20));
             JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
             left.setOpaque(false);
             left.add(minute);
             if (e.side() != MatchEvent.Side.NONE) {
-                left.add(new StoneIcon(e.side() == MatchEvent.Side.HOME, key ? 7 : 4));
+                left.add(new StoneIcon(e.side() == MatchEvent.Side.HOME ? kits.home() : kits.away(), key ? 7 : 4));
             } else {
                 left.add(Box.createHorizontalStrut(18));
             }

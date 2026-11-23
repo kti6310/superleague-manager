@@ -17,7 +17,34 @@ class TitlePanel extends JPanel {
 
     TitlePanel(Runnable onNewGame) {
         super(new GridBagLayout());
-        JPanel column = new JPanel();
+        JPanel column = new JPanel() {
+            private float alpha = 0f;
+            private int rise = 18;
+            private boolean started;
+
+            @Override
+            public void addNotify() {
+                super.addNotify();
+                if (!started) {
+                    started = true;
+                    // one-time entrance: fade in while rising 18px
+                    Anim.run(650, t -> {
+                        alpha = (float) t;
+                        rise = (int) Math.round(18 * (1 - t));
+                        repaint();
+                    }, null);
+                }
+            }
+
+            @Override
+            public void paint(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, alpha));
+                g2.translate(0, rise);
+                super.paint(g2);
+                g2.dispose();
+            }
+        };
         column.setOpaque(false);
         column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
 
@@ -35,10 +62,12 @@ class TitlePanel extends JPanel {
         start.setFont(Theme.font(Font.BOLD, 16));
         start.setAlignmentX(Component.CENTER_ALIGNMENT);
         start.addActionListener(e -> onNewGame.run());
+        ((Widgets.FlatButton) start).fixSize(220, 46);
         column.add(start);
-        column.add(Box.createVerticalStrut(12));
+        column.add(Box.createVerticalStrut(10));
         JButton quit = Theme.secondaryButton("종료");
         quit.setAlignmentX(Component.CENTER_ALIGNMENT);
+        ((Widgets.FlatButton) quit).fixSize(220, 46);
         quit.addActionListener(e -> System.exit(0));
         column.add(quit);
         java.awt.GridBagConstraints center = new java.awt.GridBagConstraints();

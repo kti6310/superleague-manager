@@ -96,6 +96,11 @@ final class Theme {
         return dark;
     }
 
+    /** Highlight colour for rows/boxes created after a window opened (those are not re-themed automatically). */
+    static Color tint(int lightRgb, int darkRgb) {
+        return new Color(dark ? darkRgb : lightRgb);
+    }
+
     static void setDark(boolean useDark, Component root) {
         if (useDark == dark) {
             return;
@@ -306,6 +311,25 @@ final class Theme {
 
     static Border cardBorder() {
         return BorderFactory.createEmptyBorder(14, 16, 14, 16);
+    }
+
+    /** Text field look: grey outline, turns blue while typing so the active field is obvious. */
+    static void styleInput(javax.swing.JTextField field) {
+        java.util.function.Consumer<Boolean> apply = focused -> field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(focused ? ACCENT : BORDER_STRONG, focused ? 2 : 1),
+                BorderFactory.createEmptyBorder(focused ? 7 : 8, focused ? 9 : 10, focused ? 7 : 8, focused ? 9 : 10)));
+        apply.accept(false);
+        field.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                apply.accept(true);
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                apply.accept(false);
+            }
+        });
     }
 
     static JPanel card(String title, Component body) {

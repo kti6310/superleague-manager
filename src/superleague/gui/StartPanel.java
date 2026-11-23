@@ -37,6 +37,82 @@ class StartPanel extends JPanel {
     private final JTextField seedField = new JTextField(10);
     private int selected = -1;
     private int hovered = -1;
+    private final JPanel colorRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+    private Kits.Kit chosenKit;
+    private Swatch chosenSwatch;
+
+    /** Round kit swatch for the team-colour picker. */
+    private final class Swatch extends JComponent {
+        private final Kits.Kit kit;
+        private boolean hover;
+
+        Swatch(Kits.Kit kit, String tip, java.util.function.Consumer<Swatch> onPick) {
+            this.kit = kit;
+            setPreferredSize(new Dimension(30, 30));
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setToolTipText(tip);
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    onPick.accept(Swatch.this);
+                }
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    hover = true;
+                    repaint();
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    hover = false;
+                    repaint();
+                }
+            });
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = Widgets.smooth(g);
+            int c = getWidth() / 2;
+            if (chosenSwatch == this) {
+                g2.setColor(Theme.ACCENT);
+                g2.setStroke(new java.awt.BasicStroke(2.5f));
+                g2.drawOval(1, 1, getWidth() - 3, getHeight() - 3);
+            } else if (hover) {
+                g2.setColor(Theme.BORDER_STRONG);
+                g2.setStroke(new java.awt.BasicStroke(2f));
+                g2.drawOval(1, 1, getWidth() - 3, getHeight() - 3);
+            }
+            PitchView.drawKitDot(g2, c, c - 1, 10, kit);
+            g2.dispose();
+        }
+    }
+
+    private void buildColorRow(Team team) {
+        colorRow.removeAll();
+        colorRow.add(Theme.label("팀 색깔", Font.BOLD, 13, Theme.TEXT));
+        java.util.function.Consumer<Swatch> pick = s -> {
+            chosenSwatch = s;
+            chosenKit = s.kit == Kits.preset(team.name()) ? null : s.kit;
+            colorRow.repaint();
+        };
+        Swatch def = new Swatch(Kits.preset(team.name()), "구단 기본 유니폼", s -> {
+            chosenSwatch = s;
+            chosenKit = null;
+            colorRow.repaint();
+        });
+        colorRow.add(def);
+        colorRow.add(Theme.label("|", Font.PLAIN, 13, Theme.BORDER_STRONG));
+        for (int rgb : Kits.PALETTE) {
+            colorRow.add(new Swatch(Kits.solid(new Color(rgb)), "이 색으로 유니폼 바꾸기", pick));
+        }
+        chosenSwatch = def;
+        chosenKit = null;
+        colorRow.setVisible(true);
+        colorRow.revalidate();
+        colorRow.repaint();
+    }
 
     StartPanel(BiConsumer<Integer, Long> onStart) {
         super(new BorderLayout());
@@ -77,17 +153,23 @@ class StartPanel extends JPanel {
                 BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.BORDER),
                 BorderFactory.createEmptyBorder(14, 32, 14, 32)));
         footer.add(selectionLabel, BorderLayout.WEST);
+        colorRow.setOpaque(false);
+        colorRow.setVisible(false);
+        colorRow.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        footer.add(colorRow, BorderLayout.NORTH);
 
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         right.setBackground(Theme.CARD);
         right.add(Theme.label("시드 (비우면 무작위)", Font.PLAIN, 12, Theme.MUTED));
         seedField.setFont(Theme.font(Font.PLAIN, 13));
-        seedField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Theme.BORDER_STRONG),
-                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+        Theme.styleInput(seedField);
         right.add(seedField);
         startButton.setEnabled(false);
-        startButton.addActionListener(e -> onStart.accept(selected, parseSeed()));
+        startButton.addActionListener(e -> {
+            // only the user's club can be recoloured; null = keep the club's own kit
+            Kits.setUserKit(teams.get(selected).name(), chosenKit);
+            onStart.accept(selected, parseSeed());
+        });
         right.add(startButton);
         footer.add(right, BorderLayout.EAST);
         add(footer, BorderLayout.SOUTH);
@@ -136,6 +218,21 @@ class StartPanel extends JPanel {
         text.add(Theme.label(String.format("%s · 목표 %s", team.country(), team.tier().targetLabel()),
                 Font.PLAIN, 12, Theme.MUTED));
         card.add(text, BorderLayout.CENTER);
+        Kits.Kit kit = Kits.preset(team.name());
+        JComponent kitDot = new JComponent() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = Widgets.smooth(g);
+                PitchView.drawKitDot(g2, getWidth() / 2, getHeight() / 2 - 1, 9, kit);
+                g2.dispose();
+            }
+        };
+        kitDot.setPreferredSize(new Dimension(24, 24));
+        kitDot.setToolTipText("구단 유니폼 색");
+        JPanel kitWrap = new JPanel(new java.awt.GridBagLayout());
+        kitWrap.setOpaque(false);
+        kitWrap.add(kitDot);
+        card.add(kitWrap, BorderLayout.EAST);
 
         card.addMouseListener(new MouseAdapter() {
             @Override
@@ -205,5 +302,8 @@ class StartPanel extends JPanel {
                 team.name(), tier.name(), tier.targetLabel()));
         selectionLabel.setForeground(Theme.TEXT);
         startButton.setEnabled(true);
+        if (previous != index) {
+            buildColorRow(team);
+        }
     }
 }

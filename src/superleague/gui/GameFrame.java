@@ -45,6 +45,7 @@ public class GameFrame extends JFrame {
 
     private void show(java.awt.Container panel) {
         setContentPane(panel);
+        Theme.adapt(panel);
         revalidate();
         repaint();
     }
@@ -58,9 +59,12 @@ public class GameFrame extends JFrame {
         }
         teams.get(teamIndex).setManager(managerName, managerStyle);
         Season season = new Season(teams, teams.get(teamIndex), random);
-        setContentPane(new GamePanel(season, data, this::showStart));
+        GamePanel panel = new GamePanel(season, data, this::showStart);
+        setContentPane(panel);
+        Theme.adapt(panel);
         revalidate();
         repaint();
+        javax.swing.SwingUtilities.invokeLater(() -> DrawDialog.show(panel, season));
     }
 
     private void showWarnings(SquadLoader.Result data) {

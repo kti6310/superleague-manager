@@ -21,7 +21,7 @@ final class EndingDialog {
     private EndingDialog() {
     }
 
-    static boolean show(Component parent, Team team, int rank, Ending ending, Player topScorer,
+    static boolean show(Component parent, Team team, String placement, Ending ending, Player topScorer,
                         java.util.List<String> career) {
         Window owner = SwingUtilities.getWindowAncestor(parent);
         JDialog dialog = new JDialog(owner, "시즌 엔딩", JDialog.ModalityType.APPLICATION_MODAL);
@@ -35,7 +35,7 @@ final class EndingDialog {
         header.add(Box.createVerticalStrut(4));
         header.add(Theme.label(ending.title(), Font.BOLD, 26, Color.WHITE));
         header.add(Box.createVerticalStrut(4));
-        header.add(Theme.label(team.name() + " · 최종 " + rank + "위", Font.PLAIN, 14, Theme.ON_DARK_MUTED));
+        header.add(Theme.label(team.name() + " · " + placement, Font.PLAIN, 14, Theme.ON_DARK_MUTED));
 
         JPanel body = new JPanel();
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));

@@ -29,7 +29,7 @@ final class TrainingPanel extends JPanel {
     private final Runnable onChange;
     private final java.util.Map<TeamTraining, javax.swing.JRadioButton> options = new java.util.EnumMap<>(TeamTraining.class);
     private final JLabel teamNote = Theme.label("", Font.BOLD, 13, Theme.ACCENT);
-    private final DefaultTableModel model = Tables.model("포지션", "선수", "나이", "능력", "개인 훈련", "진행", "컨디션");
+    private final DefaultTableModel model = Tables.model("포지션", "선수", "나이", "능력", "개인 훈련", "진행", "체력");
     private final JTable table;
     private List<Player> rows = List.of();
     private boolean updating;
@@ -205,8 +205,11 @@ final class TrainingPanel extends JPanel {
             String activity;
             String effect;
             if (round >= 0) {
-                superleague.sim.Fixture f = season.userSchedule().get(round);
-                event = String.format("%d라운드 vs %s (%s)", round + 1, f.opponentOf(team).name(), f.home() == team ? "홈" : "원정");
+                List<superleague.sim.Fixture> fixtures = season.userSchedule();
+                superleague.sim.Fixture f = round < fixtures.size() ? fixtures.get(round) : null;
+                event = f == null ? superleague.game.Season.roundLabel(round) + (round < fixtures.size() ? " · 우리 경기 없음" : " · 대진 미정")
+                        : String.format("%s vs %s (%s)", superleague.game.Season.roundLabel(round), f.opponentOf(team).name(),
+                        f.neutral() ? "중립" : f.home() == team ? "홈" : "원정");
                 activity = "경기";
                 effect = "";
                 matchesShown++;

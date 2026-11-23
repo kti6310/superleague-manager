@@ -15,6 +15,9 @@ public final class ScheduleGenerator {
     public static List<List<Fixture>> doubleRoundRobin(List<Team> teams, Random random) {
         List<Team> order = new ArrayList<>(teams);
         Collections.shuffle(order, random);
+        if (order.size() % 2 == 1) {
+            order.add(null);
+        }
         int n = order.size();
         int half = n - 1;
         List<List<Fixture>> rounds = new ArrayList<>();
@@ -26,6 +29,9 @@ public final class ScheduleGenerator {
             for (int i = 0; i < n / 2; i++) {
                 Team a = order.get(i);
                 Team b = order.get(n - 1 - i);
+                if (a == null || b == null) {
+                    continue;
+                }
                 int la = streak.getOrDefault(a, 0);
                 int lb = streak.getOrDefault(b, 0);
                 boolean bHome = la != lb ? la > lb

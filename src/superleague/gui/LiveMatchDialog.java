@@ -28,6 +28,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import superleague.model.Player;
 import superleague.model.Team;
 import superleague.sim.MatchEvent;
 import superleague.sim.LiveMatch;
@@ -68,9 +69,11 @@ final class LiveMatchDialog extends JDialog {
     private final JButton closeButton = Theme.primaryButton("닫기");
     private final JButton pauseButton = Theme.secondaryButton("일시정지");
     private final JButton subButton = Theme.primaryButton("선수 교체");
+    private final JButton tacticButton = Theme.secondaryButton("전술 변경");
+    private final JLabel staminaList = Theme.label(" ", Font.PLAIN, 12, Theme.TEXT);
     private final Timer timer;
 
-    private LiveMatchDialog(Window owner, LiveMatch live, MatchResult result, Team userTeam, int round) {
+    private LiveMatchDialog(Window owner, LiveMatch live, MatchResult result, Team userTeam, String round) {
         super(owner, "경기 중계", ModalityType.APPLICATION_MODAL);
         this.live = live;
         this.result = result;
@@ -128,11 +131,17 @@ final class LiveMatchDialog extends JDialog {
         middle.setBorder(BorderFactory.createEmptyBorder(12, 18, 10, 18));
         middle.add(timelineWrap, BorderLayout.WEST);
         middle.add(feedCard, BorderLayout.CENTER);
+        if (live != null) {
+            staminaList.setVerticalAlignment(JLabel.TOP);
+            JPanel staminaCard = Theme.card("우리 팀 체력", staminaList);
+            staminaCard.setPreferredSize(new Dimension(230, 10));
+            middle.add(staminaCard, BorderLayout.EAST);
+        }
         root.add(middle, BorderLayout.CENTER);
         root.add(footer(), BorderLayout.SOUTH);
 
         setContentPane(root);
-        setSize(1120, 790);
+        setSize(live != null ? 1360 : 1120, 790);
         setMinimumSize(new Dimension(1000, 720));
         setLocationRelativeTo(owner);
         updateStats();
@@ -153,17 +162,17 @@ final class LiveMatchDialog extends JDialog {
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
     }
 
-    static void show(Component parent, MatchResult result, Team userTeam, int round) {
+    static void show(Component parent, MatchResult result, Team userTeam, String round) {
         Window owner = SwingUtilities.getWindowAncestor(parent);
         new LiveMatchDialog(owner, null, result, userTeam, round).setVisible(true);
     }
 
-    static void show(Component parent, LiveMatch live, Team userTeam, int round) {
+    static void show(Component parent, LiveMatch live, Team userTeam, String round) {
         Window owner = SwingUtilities.getWindowAncestor(parent);
         new LiveMatchDialog(owner, live, live.result(), userTeam, round).setVisible(true);
     }
 
-    private JComponent header(int round) {
+    private JComponent header(String round) {
         JPanel h = new JPanel(new GridBagLayout());
         h.setBackground(Theme.NAVY);
         h.setBorder(BorderFactory.createEmptyBorder(18, 24, 18, 24));
@@ -184,7 +193,7 @@ final class LiveMatchDialog extends JDialog {
         score.add(homeScore);
         score.add(Theme.label(":", Font.BOLD, 32, Theme.ON_DARK_MUTED));
         score.add(awayScore);
-        JLabel roundLabel = Theme.label(round + "라운드", Font.PLAIN, 12, Theme.ON_DARK_MUTED);
+        JLabel roundLabel = Theme.label(round, Font.PLAIN, 12, Theme.ON_DARK_MUTED);
         for (JComponent comp : new JComponent[]{roundLabel, score, clock, status}) {
             comp.setAlignmentX(CENTER_ALIGNMENT);
             mid.add(comp);
@@ -252,6 +261,7 @@ final class LiveMatchDialog extends JDialog {
         skipButton.addActionListener(e -> finishNow());
         pauseButton.addActionListener(e -> setPaused(!paused));
         subButton.addActionListener(e -> openSubstitution());
+        tacticButton.addActionListener(e -> openTactics());
         subButton.setEnabled(false);
         updateSubButton();
         closeButton.setEnabled(false);
@@ -260,6 +270,7 @@ final class LiveMatchDialog extends JDialog {
             dispose();
         });
         if (live != null) {
+            right.add(tacticButton);
             right.add(subButton);
         }
         right.add(pauseButton);
@@ -290,21 +301,89 @@ final class LiveMatchDialog extends JDialog {
             return;
         }
         int left = live.subsLeft(userTeam);
-        subButton.setText("선수 교체 (" + left + "/" + LiveMatch.MAX_SUBS + ")");
-        subButton.setEnabled(!finished && stepIndex > 0 && left > 0);
+        int windows = live.windowsLeft(userTeam);
+        subButton.setText(String.format("선수 교체 (%d명 · %d번 남음)", left, windows));
+        subButton.setEnabled(!finished && stepIndex > 0 && left > 0 && windows > 0);
+        tacticButton.setEnabled(!finished && stepIndex > 0);
+        updateStamina();
+    }
+
+    private int currentClock() {
+        return lastStep[0] < 0 ? 45 : lastStep[0];
+    }
+
+    private void updateStamina() {
+        if (live == null) {
+            return;
+        }
+        StringBuilder sb = new StringBuilder("<html>");
+        for (int i = 0; i < 11; i++) {
+            Player p = userTeam.slotPlayer(i);
+            if (p != null) {
+                sb.append("<b>").append(userTeam.slots().get(i).name()).append("</b> ").append(p.name()).append("<br>&nbsp;&nbsp;")
+                        .append(SubstitutionDialog.staminaText(live.stamina(userTeam, p, currentClock()))).append("<br>");
+            }
+        }
+        staminaList.setText(sb.append("</html>").toString());
+    }
+
+    private void openTactics() {
+        boolean wasPaused = paused;
+        setPaused(true);
+        javax.swing.JComboBox<superleague.model.Tactic> tactic = new javax.swing.JComboBox<>(superleague.model.Tactic.values());
+        tactic.setSelectedItem(userTeam.tactic());
+        java.util.List<superleague.model.Instructions.Style> styles = new ArrayList<>(java.util.List.of(superleague.model.Instructions.Style.values()));
+        styles.remove(superleague.model.Instructions.Style.CUSTOM);
+        javax.swing.JComboBox<superleague.model.Instructions.Style> style = new javax.swing.JComboBox<>(
+                styles.toArray(new superleague.model.Instructions.Style[0]));
+        superleague.model.Instructions.Style current = superleague.model.Instructions.Style.of(userTeam.instructions());
+        style.setSelectedItem(current == superleague.model.Instructions.Style.CUSTOM ? superleague.model.Instructions.Style.BALANCED : current);
+        JPanel form = new JPanel(new GridLayout(0, 1, 0, 6));
+        form.add(Theme.label("경기 운영", Font.BOLD, 13, Theme.TEXT));
+        form.add(tactic);
+        form.add(Theme.label("팀 스타일 (압박·템포·라인·폭)", Font.BOLD, 13, Theme.TEXT));
+        form.add(style);
+        form.add(Theme.label("<html>바꾼 순간부터 남은 시간이 새 전술로 다시 계산됩니다.<br>경기가 끝나면 원래 전술로 돌아갑니다.</html>",
+                Font.PLAIN, 12, Theme.MUTED));
+        int ok = javax.swing.JOptionPane.showConfirmDialog(this, form, "경기 중 전술 변경",
+                javax.swing.JOptionPane.OK_CANCEL_OPTION, javax.swing.JOptionPane.PLAIN_MESSAGE);
+        if (ok == javax.swing.JOptionPane.OK_OPTION) {
+            boolean ht = lastStep[0] < 0;
+            if (live.changeTactic(userTeam, (superleague.model.Tactic) tactic.getSelectedItem(),
+                    (superleague.model.Instructions.Style) style.getSelectedItem(),
+                    ht ? 46 : lastStep[0], ht ? 0 : lastStep[1], lastKey)) {
+                applyLiveUpdate();
+            }
+        }
+        if (!wasPaused) {
+            setPaused(false);
+        }
+    }
+
+    private void applyLiveUpdate() {
+        result = live.result();
+        events = result.events();
+        reveal(events.get(eventIndex++));
+        updateStats();
+        updateSubButton();
+        pitch.repaint();
     }
 
     private void openSubstitution() {
         boolean wasPaused = paused;
         setPaused(true);
-        SubstitutionDialog.show(this, live, userTeam, (slot, in) -> {
+        SubstitutionDialog.show(this, live, userTeam, currentClock(), changes -> {
             boolean ht = lastStep[0] < 0;
             int minute = ht ? 46 : lastStep[0];
             int extra = ht ? 0 : lastStep[1];
-            if (live.substitute(userTeam, slot, in, minute, extra, lastKey)) {
+            int before = eventIndex;
+            if (live.substitute(userTeam, changes, minute, extra, lastKey)) {
                 result = live.result();
                 events = result.events();
-                reveal(events.get(eventIndex++));
+                eventIndex = before;
+                for (int i = 0; i < changes.size(); i++) {
+                    reveal(events.get(eventIndex++));
+                }
                 updateStats();
                 pitch.repaint();
             }

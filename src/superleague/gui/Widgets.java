@@ -61,6 +61,10 @@ final class Widgets {
             setBackground(Theme.CARD);
         }
 
+        void restyle(java.util.Map<Integer, Color> map) {
+            line = Theme.lineColor(line, map);
+        }
+
         void setLine(Color line, int width) {
             this.line = line;
             this.lineWidth = width;

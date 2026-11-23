@@ -41,7 +41,18 @@ class TitlePanel extends JPanel {
         quit.setAlignmentX(Component.CENTER_ALIGNMENT);
         quit.addActionListener(e -> System.exit(0));
         column.add(quit);
-        add(column);
+        java.awt.GridBagConstraints center = new java.awt.GridBagConstraints();
+        center.gridx = 0;
+        center.gridy = 0;
+        add(column, center);
+        java.awt.GridBagConstraints corner = new java.awt.GridBagConstraints();
+        corner.gridx = 0;
+        corner.gridy = 0;
+        corner.anchor = java.awt.GridBagConstraints.FIRST_LINE_END;
+        corner.insets = new java.awt.Insets(18, 0, 0, 18);
+        corner.weightx = 1;
+        corner.weighty = 1;
+        add(Theme.themeToggle(this), corner);
     }
 
     @Override

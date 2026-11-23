@@ -59,7 +59,7 @@ public enum TeamTraining {
             parts.add(String.format("경기 체력 소모 %+d", fatigue));
         }
         if (condition != 0) {
-            parts.add(String.format("컨디션 %+d", condition));
+            parts.add(String.format("체력 %+d", condition));
         }
         if (training != 0) {
             parts.add(String.format("훈련 수준 %+d", training));

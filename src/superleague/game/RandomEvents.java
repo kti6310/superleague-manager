@@ -47,7 +47,7 @@ public class RandomEvents {
             }
             default -> {
                 team.squad().forEach(p -> p.changeCondition(8));
-                return "구단이 선수단 회복 캠프를 지원했습니다. (전원 컨디션 +8)";
+                return "구단이 선수단 회복 캠프를 지원했습니다. (전원 체력 +8)";
             }
         }
     }

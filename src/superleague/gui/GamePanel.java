@@ -3,6 +3,7 @@ package superleague.gui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -74,9 +75,9 @@ class GamePanel extends JPanel {
     private final JTabbedPane tabs = new JTabbedPane();
     private final JPanel resultPanel = new JPanel(new BorderLayout(0, 12));
     private final DefaultTableModel standingsModel =
-            Tables.model("순위", "구단", "등급", "경기", "승", "무", "패", "득점", "실점", "득실", "승점");
+            Tables.model("순위", "구단", "등급", "경기", "승", "무", "패", "득점", "실점", "득실", "승점", "진출");
     private final DefaultTableModel squadModel =
-            Tables.model("포지션", "이름", "나이", "국적", "키", "몸무게", "주발", "현재", "최대", "성장", "컨디션", "출전", "득점", "상태");
+            Tables.model("포지션", "이름", "나이", "국적", "키", "몸무게", "주발", "현재", "최대", "성장", "체력", "출전", "득점", "상태");
     private final DefaultTableModel historyModel =
             Tables.model("라운드", "장소", "상대", "등급", "스코어", "결과");
     private List<Player> squadRows = List.of();
@@ -84,6 +85,7 @@ class GamePanel extends JPanel {
             Tables.model("라운드", "날짜", "장소", "상대", "등급", "상대 순위", "결과", "스코어", "득점자");
     private final JTextArea newsArea = new JTextArea();
     private List<Team> standingsSnapshot = List.of();
+    private final JLabel bracket = Theme.label(" ", Font.PLAIN, 12, Theme.TEXT);
     private TacticsPanel tactics;
     private TrainingPanel training;
 
@@ -104,8 +106,9 @@ class GamePanel extends JPanel {
         if (team.managerStyle() != null) {
             log("[코칭 스타일] " + team.managerStyle().label + ": " + team.managerStyle().effect);
         }
-        log(String.format("총 %d시즌을 치릅니다. 3경기마다 구단주 평가, 17라운드 후 중간 평가, 34라운드 후 시즌 종료 평가가 있습니다.",
-                Season.MAX_SEASONS));
+        log(String.format("총 %d시즌을 치릅니다. %s · 조별 리그 %d경기일 → 포스트시즌(플레이오프·8강·4강·결승)",
+                Season.MAX_SEASONS, season.groupName(team) + " 배정", Season.REGULAR_ROUNDS));
+        log("3경기마다 구단주 평가, 정규 시즌 반환점(14경기일) 중간 평가, 결승 뒤 시즌 종료 평가가 있습니다.");
         log("[선수 데이터] " + data.summary());
         data.warnings().forEach(w -> log("[선수 데이터] " + w));
         log("[선수 데이터] 선수단 탭에서 * 표시는 자동 생성된 선수입니다.");
@@ -152,7 +155,11 @@ class GamePanel extends JPanel {
         right.add(nextOpponent);
         right.add(Box.createVerticalStrut(2));
         right.add(nextDetail);
-        header.add(right, BorderLayout.EAST);
+        JPanel east = new JPanel(new FlowLayout(FlowLayout.RIGHT, 14, 0));
+        east.setOpaque(false);
+        east.add(Theme.themeToggle(this));
+        east.add(right);
+        header.add(east, BorderLayout.EAST);
 
         JPanel wrap = new JPanel(new BorderLayout());
         wrap.add(header, BorderLayout.CENTER);
@@ -295,7 +302,7 @@ class GamePanel extends JPanel {
     private void refreshOpponent(Fixture next) {
         oppXi.removeAll();
         if (next == null) {
-            oppName.setText("시즌 종료");
+            oppName.setText(season.isFinished() ? "시즌 종료" : "이번 라운드 경기 없음");
             oppInfo.setText(" ");
             oppTactic.setText(" ");
             oppScout.setText(" ");
@@ -306,7 +313,7 @@ class GamePanel extends JPanel {
         opp.autoPick();
         oppName.setText(opp.name());
         oppInfo.setText(String.format("%s등급 · %s · %s · %s", opp.tier().name(),
-                season.roundsPlayed() == 0 ? "개막 전" : season.rankOf(opp) + "위 승점 " + opp.points(),
+                season.positionLabel(opp) + " · 승점 " + opp.points(),
                 next.home() == team ? "우리 홈" : "상대 홈",
                 String.format("%d승 %d무 %d패", opp.won(), opp.drawn(), opp.lost())));
         Tactic style = opp.preferredTactic();
@@ -388,11 +395,17 @@ class GamePanel extends JPanel {
 
         JTable standings = Tables.table(standingsModel,
                 row -> row < standingsSnapshot.size() && standingsSnapshot.get(row) == team, 1);
-        Tables.widths(standings, 44, 170, 44, 44, 36, 36, 36, 44, 44, 44, 48);
-        tabs.addTab("순위표", Tables.scroll(standings));
+        Tables.widths(standings, 44, 170, 44, 44, 36, 36, 36, 44, 44, 44, 48, 90);
+        bracket.setVerticalAlignment(JLabel.TOP);
+        bracket.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        JPanel standingsTab = new JPanel(new BorderLayout(0, 8));
+        standingsTab.setOpaque(false);
+        standingsTab.add(bracket, BorderLayout.NORTH);
+        standingsTab.add(Tables.scroll(standings), BorderLayout.CENTER);
+        tabs.addTab("순위표", standingsTab);
 
         JTable schedule = Tables.table(scheduleModel, row -> row == season.roundsPlayed(), 3);
-        Tables.widths(schedule, 48, 120, 48, 150, 44, 64, 60, 56, 240);
+        Tables.widths(schedule, 96, 120, 48, 150, 44, 110, 60, 56, 200);
         tabs.addTab("경기 일정", Tables.scroll(schedule));
 
         JTable squad = Tables.table(squadModel, row -> false, 1);
@@ -420,7 +433,7 @@ class GamePanel extends JPanel {
         tabs.addTab("훈련", training);
 
         JTable history = Tables.table(historyModel, row -> false, 2);
-        Tables.widths(history, 56, 56, 170, 44, 64, 48);
+        Tables.widths(history, 96, 56, 170, 44, 64, 48);
         tabs.addTab("시즌 기록", Tables.scroll(history));
 
         newsArea.setEditable(false);
@@ -447,22 +460,30 @@ class GamePanel extends JPanel {
         scheduleModel.setRowCount(0);
         List<Fixture> fixtures = season.userSchedule();
         List<MatchResult> results = season.userResults();
-        for (int i = 0; i < fixtures.size(); i++) {
-            Fixture f = fixtures.get(i);
+        for (int i = 0; i < season.totalRounds(); i++) {
+            Fixture f = i < fixtures.size() ? fixtures.get(i) : null;
+            if (f == null) {
+                String note = i >= fixtures.size() ? "포스트시즌 · 대진 미정"
+                        : i < Season.REGULAR_ROUNDS ? "휴식 (조별 리그 경기 없음)" : "경기 없음";
+                scheduleModel.addRow(new Object[]{Season.roundLabel(i), Season.formatDate(season.dateOfRound(i)), "-", note,
+                        "", "", i < season.roundsPlayed() ? "-" : "", "", ""});
+                continue;
+            }
             Team opp = f.opponentOf(team);
             String outcome = i == season.roundsPlayed() ? "다음 경기" : "예정";
             String score = "";
             String scorers = "";
-            if (i < results.size()) {
-                MatchResult r = results.get(i);
+            MatchResult r = results.stream().filter(x -> x.fixture() == f).findFirst().orElse(null);
+            if (r != null) {
                 int gf = r.goalsFor(team);
                 int ga = r.goalsAgainst(team);
                 outcome = gf > ga ? "승" : gf == ga ? "무" : "패";
                 score = gf + " - " + ga;
                 scorers = String.join(", ", r.fixture().home() == team ? r.homeScorers() : r.awayScorers());
             }
-            scheduleModel.addRow(new Object[]{i + 1, Season.formatDate(season.dateOfRound(i)), f.home() == team ? "홈" : "원정", opp.name(), opp.tier().name(),
-                    season.roundsPlayed() == 0 ? "-" : season.rankOf(opp) + "위", outcome, score, scorers});
+            scheduleModel.addRow(new Object[]{Season.roundLabel(i), Season.formatDate(season.dateOfRound(i)),
+                    f.neutral() ? "중립" : f.home() == team ? "홈" : "원정", opp.name(), opp.tier().name(),
+                    season.positionLabel(opp), outcome, score, scorers});
         }
     }
 
@@ -472,17 +493,18 @@ class GamePanel extends JPanel {
         teamName.setText(team.name());
         tierChip.set(team.tier().name() + "등급", Theme.tierColor(team.tier()));
         seasonProgress.setFraction(played / (double) season.totalRounds());
-        String rank = played == 0 ? "개막 전" : season.rankOf(team) + "위";
-        roundInfo.setText(String.format("시즌 %d/%d (%s) · %s · %d라운드 / %d 진행 · %s · 승점 %d · %d승 %d무 %d패 · 목표 %d위 이내",
-                season.seasonNumber(), Season.MAX_SEASONS, season.seasonLabel(), Season.formatDate(season.today()), played, season.totalRounds(), rank, team.points(), team.won(), team.drawn(), team.lost(),
-                team.tier().targetRank()));
+        roundInfo.setText(String.format("시즌 %d/%d (%s) · %s · %d / %d 경기일 · %s · 조별 승점 %d · %d승 %d무 %d패 · 목표 %s",
+                season.seasonNumber(), Season.MAX_SEASONS, season.seasonLabel(), Season.formatDate(season.today()), played,
+                season.totalRounds(), season.positionLabel(team), team.points(), team.won(), team.drawn(), team.lost(),
+                team.tier().targetLabel()));
 
         Fixture next = season.nextUserFixture();
         refreshOpponent(next);
         if (next != null) {
             Team opp = next.opponentOf(team);
             long dDay = java.time.temporal.ChronoUnit.DAYS.between(season.today(), season.dateOfRound(played));
-            nextTitle.setText(String.format("%d라운드 · %s · %s", played + 1, next.home() == team ? "홈" : "원정",
+            nextTitle.setText(String.format("%s · %s · %s", Season.roundLabel(played),
+                    next.neutral() ? "중립 구장" : next.home() == team ? "홈" : "원정",
                     dDay == 0 ? "오늘 경기" : "D-" + dDay));
             nextOpponent.setText("vs " + opp.name());
             Tactic oppStyle = opp.preferredTactic();
@@ -493,10 +515,16 @@ class GamePanel extends JPanel {
                     : String.format("스카우트: 상대가 %s이라 %s 운영이 유리합니다.", oppStyle.family().label(),
                     oppStyle.family().beatenBy().label()));
             tacticHint.setForeground(ready ? Theme.GOOD : Theme.WARN);
+        } else if (!season.isFinished()) {
+            long dDay = java.time.temporal.ChronoUnit.DAYS.between(season.today(), season.dateOfRound(played));
+            nextTitle.setText(String.format("%s · %s", Season.roundLabel(played), dDay == 0 ? "오늘" : "D-" + dDay));
+            nextOpponent.setText("경기 없음");
+            nextDetail.setText(season.isPostseason() ? season.positionLabel(team) : "휴식 라운드 (9팀 조라 한 팀씩 쉽니다)");
+            tacticHint.setText(" ");
         } else {
             nextTitle.setText("시즌 종료");
-            nextOpponent.setText("최종 " + season.rankOf(team) + "위");
-            nextDetail.setText(String.format("승점 %d · 득실 %+d", team.points(), team.goalDifference()));
+            nextOpponent.setText(season.positionLabel(team));
+            nextDetail.setText(String.format("조별 승점 %d · 득실 %+d", team.points(), team.goalDifference()));
             tacticHint.setText(" ");
         }
 
@@ -510,7 +538,7 @@ class GamePanel extends JPanel {
         facilityValue.setText(String.format("Lv.%d  %s", team.facility(), Theme.signed(team.facilityModifier())));
         String perks = (team.teamworkRounds() > 0 ? " · 팀워크 특전 " + team.teamworkRounds() + "경기" : "")
                 + (team.trainingBoostRounds() > 0 ? " · 훈련 특전 " + team.trainingBoostRounds() + "경기" : "");
-        squadInfo.setText(String.format("평균 컨디션 %.0f · 부상자 %d명%s", team.averageCondition(), team.injuredCount(), perks));
+        squadInfo.setText(String.format("평균 체력 %.0f · 부상자 %d명%s", team.averageCondition(), team.injuredCount(), perks));
         performanceValue.setText(String.format("%.1f", team.performance()));
         performanceDetail.setText(String.format("선발 %.1f × (1 %s %s %s %s)", team.lineupStrength(),
                 Theme.signed(team.moraleModifier()), Theme.signed(team.trainingModifier()),
@@ -518,7 +546,7 @@ class GamePanel extends JPanel {
 
         TrainingIntensity ti = team.intensity();
         intensitySeg.setSelectedIndex(ti.ordinal());
-        intensityDetail.setText(String.format("훈련 %+d · 사기 %+d · 컨디션 %+d · 부상 위험 %.1f%%",
+        intensityDetail.setText(String.format("훈련 %+d · 사기 %+d · 체력 %+d · 부상 위험 %.1f%%",
                 ti.trainingDelta(), ti.moraleDelta(), ti.conditionDelta(), ti.injuryChance() * 100));
         Tactic tc = team.tactic();
         tacticSeg.setSelectedIndex(tc.ordinal());
@@ -539,13 +567,36 @@ class GamePanel extends JPanel {
     }
 
     private void refreshStandings() {
-        standingsSnapshot = season.standings();
+        List<Team> rows = new java.util.ArrayList<>();
         standingsModel.setRowCount(0);
-        for (int i = 0; i < standingsSnapshot.size(); i++) {
-            Team t = standingsSnapshot.get(i);
-            standingsModel.addRow(new Object[]{i + 1, t.name(), t.tier().name(), t.played(), t.won(), t.drawn(),
-                    t.lost(), t.goalsFor(), t.goalsAgainst(), String.format("%+d", t.goalDifference()), t.points()});
+        for (List<Team> group : List.of(season.draw().groupA(), season.draw().groupB())) {
+            rows.add(null);
+            standingsModel.addRow(new Object[]{"", season.groupName(group.get(0)), "", "", "", "", "", "", "", "", "", ""});
+            List<Team> table = season.groupStandings(group);
+            for (int i = 0; i < table.size(); i++) {
+                Team t = table.get(i);
+                rows.add(t);
+                String zone = i < 3 ? "8강 직행" : i < 5 ? "플레이오프" : "";
+                standingsModel.addRow(new Object[]{i + 1, t.name(), t.tier().name(), t.played(), t.won(), t.drawn(),
+                        t.lost(), t.goalsFor(), t.goalsAgainst(), String.format("%+d", t.goalDifference()), t.points(), zone});
+            }
         }
+        standingsSnapshot = rows;
+        StringBuilder sb = new StringBuilder("<html><b>진행 방식</b> · 9팀씩 A·B조, 같은 조 홈 앤드 어웨이 16경기 + 다른 조와 9경기(MLS 방식) → 조 1~3위 8강 직행, "
+                + "4·5위 플레이오프(2경기) → 8강·4강 홈 앤드 어웨이 → 5월 중립 구장 단판 결승");
+        superleague.game.Stage shown = null;
+        for (superleague.game.Tie tie : season.ties()) {
+            if (tie.stage != shown) {
+                shown = tie.stage;
+                sb.append("<br><b>").append(shown.label).append("</b>");
+            }
+            String line = tie.summary();
+            if (tie.first == team || tie.second == team) {
+                line = "<font color='#2563EB'><b>" + line + "</b></font>";
+            }
+            sb.append("<br>&nbsp;&nbsp;").append(line);
+        }
+        bracket.setText(sb.append("</html>").toString());
     }
 
     private void refreshSquad() {
@@ -576,7 +627,7 @@ class GamePanel extends JPanel {
     }
 
     private void playRound() {
-        int round = season.roundsPlayed() + 1;
+        String round = Season.roundLabel(season.roundsPlayed());
         RoundReport report = season.playNextRound(live -> LiveMatchDialog.show(this, live, team, round));
         recordRound(report);
         showRoundResult(report);
@@ -629,15 +680,21 @@ class GamePanel extends JPanel {
 
     private void recordRound(RoundReport report) {
         MatchResult r = report.userResult();
+        String label = Season.roundLabel(report.round() - 1);
+        if (r == null) {
+            log(String.format("[%s] 우리 팀 경기 없음 · %s", label, season.positionLabel(team)));
+            report.news().forEach(n -> log(String.format("[%s] %s", label, n)));
+            return;
+        }
         int gf = r.goalsFor(team);
         int ga = r.goalsAgainst(team);
         String outcome = gf > ga ? "승" : gf == ga ? "무" : "패";
         Team opp = r.fixture().opponentOf(team);
-        historyModel.insertRow(0, new Object[]{report.round(), r.fixture().home() == team ? "홈" : "원정",
+        historyModel.insertRow(0, new Object[]{label, r.fixture().neutral() ? "중립" : r.fixture().home() == team ? "홈" : "원정",
                 opp.name(), opp.tier().name(), gf + " - " + ga, outcome});
-        log(String.format("[R%d] %s  %s", report.round(), outcome, r.scoreLine()));
-        report.reactions().forEach(n -> log(String.format("[R%d] %s", report.round(), n)));
-        report.news().forEach(n -> log(String.format("[R%d] %s", report.round(), n)));
+        log(String.format("[%s] %s  %s", label, outcome, r.scoreLine()));
+        report.reactions().forEach(n -> log(String.format("[%s] %s", label, n)));
+        report.news().forEach(n -> log(String.format("[%s] %s", label, n)));
     }
 
     private void ownerEvent(OwnerReview review, boolean auto) {
@@ -692,6 +749,19 @@ class GamePanel extends JPanel {
     private void showRoundResult(RoundReport report) {
         resultPanel.removeAll();
         MatchResult r = report.userResult();
+        if (r == null) {
+            StringBuilder sb = new StringBuilder("<html><div style='text-align:center'><b>")
+                    .append(Season.roundLabel(report.round() - 1)).append(" · 우리 팀 경기 없음</b><br>")
+                    .append(season.positionLabel(team)).append("<br><br>");
+            report.results().forEach(x -> sb.append(x.scoreLine()).append("<br>"));
+            report.news().forEach(n -> sb.append("<br>· ").append(n));
+            JLabel idle = Theme.label(sb.append("</div></html>").toString(), Font.PLAIN, 14, Theme.MUTED);
+            idle.setHorizontalAlignment(JLabel.CENTER);
+            resultPanel.add(idle, BorderLayout.CENTER);
+            resultPanel.revalidate();
+            resultPanel.repaint();
+            return;
+        }
         int gf = r.goalsFor(team);
         int ga = r.goalsAgainst(team);
         Color tone = gf > ga ? Theme.GOOD : gf == ga ? Theme.MUTED : Theme.BAD;
@@ -703,7 +773,7 @@ class GamePanel extends JPanel {
                 BorderFactory.createMatteBorder(0, 4, 0, 0, tone),
                 BorderFactory.createEmptyBorder(14, 18, 14, 18)));
 
-        JLabel caption = Theme.label(String.format("%d라운드 · %s", report.round(), outcome), Font.BOLD, 13, tone);
+        JLabel caption = Theme.label(String.format("%s · %s", Season.roundLabel(report.round() - 1), outcome), Font.BOLD, 13, tone);
         board.add(caption, BorderLayout.NORTH);
 
         JPanel scoreRow = new JPanel(new GridLayout(1, 3));
@@ -737,7 +807,7 @@ class GamePanel extends JPanel {
                 st.homeShots(), st.homeOnTarget(), st.awayShots(), st.awayOnTarget(),
                 st.homePossession(), st.awayPossession()), Font.PLAIN, 12, Theme.MUTED), BorderLayout.WEST);
         JButton replay = Theme.secondaryButton("문자 중계 다시 보기");
-        replay.addActionListener(e -> LiveMatchDialog.show(this, r, team, report.round()));
+        replay.addActionListener(e -> LiveMatchDialog.show(this, r, team, Season.roundLabel(report.round() - 1)));
         replayRow.add(replay, BorderLayout.EAST);
         JPanel south = new JPanel(new BorderLayout(0, 10));
         south.setOpaque(false);
@@ -789,7 +859,7 @@ class GamePanel extends JPanel {
     private void review(String title) {
         int rank = season.rankOf(team);
         Verdict verdict = Verdict.of(team.tier(), rank);
-        String head = String.format("현재 %d위 · 목표 %d위 이내 → %s", rank, team.tier().targetRank(), verdict.label());
+        String head = String.format("현재 %s · 목표 %s → %s", season.positionLabel(team), team.tier().targetLabel(), verdict.label());
         List<String> messages = season.boardReview(t -> askReward(title, head));
         List<String> lines = new java.util.ArrayList<>();
         switch (verdict) {
@@ -833,7 +903,7 @@ class GamePanel extends JPanel {
             Ending last = ending.fired() ? ending
                     : Ending.career(team, season.titles(), season.targetsMet(), season.seasonNumber());
             log("[엔딩] " + last.title());
-            if (EndingDialog.show(this, team, rank, last, topScorer, season.career())) {
+            if (EndingDialog.show(this, team, season.positionLabel(team), last, topScorer, season.career())) {
                 onNewGame.run();
             }
             return;
@@ -841,7 +911,7 @@ class GamePanel extends JPanel {
         List<String> lines = new java.util.ArrayList<>();
         lines.add(ending.description());
         lines.add(season.career().get(season.career().size() - 1));
-        lines.add("다음 시즌: 모든 선수 나이 +1 · 31세 이상은 능력 하락 가능 · 부상/컨디션 초기화 · 사기는 절반으로");
+        lines.add("다음 시즌: 모든 선수 나이 +1 · 31세 이상은 능력 하락 가능 · 부상/체력 초기화 · 사기는 절반으로");
         Dialogs.show(this, season.seasonLabel() + " 시즌 종료", String.format("시즌 %d/%d · %s",
                 season.seasonNumber(), Season.MAX_SEASONS, ending.title()), lines, Dialogs.Tone.GOOD, null, "다음 시즌 시작");
         List<String> news = season.startNextSeason();
@@ -849,6 +919,8 @@ class GamePanel extends JPanel {
         news.forEach(n -> log("[새 시즌] " + n));
         historyModel.setRowCount(0);
         showPlaceholderResult();
+        refresh();
+        DrawDialog.show(this, season);
         refresh();
     }
 

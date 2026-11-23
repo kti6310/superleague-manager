@@ -54,7 +54,7 @@ final class PlayerCard extends JDialog {
                 "최대 " + p.potential(), "성장 " + (p.growth() > 0 ? "+" + p.growth() : "0")));
         head.add(Box.createVerticalStrut(8));
         head.add(infoRow(teamName, p.nationality().isBlank() ? "국적 미상" : p.nationality(),
-                "컨디션 " + p.condition() + "%", "출전 " + p.appearances() + " · 골 " + p.goals(),
+                "체력 " + p.condition() + "%", "출전 " + p.appearances() + " · 골 " + p.goals(),
                 p.isAvailable() ? "출전 가능" : "부상 " + p.injuredRounds() + "경기", "개인 훈련: " + p.trainingLabel()));
 
         Attributes.Section[] sections = Attributes.sections(p);

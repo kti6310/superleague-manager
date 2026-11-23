@@ -133,7 +133,7 @@ class StartPanel extends JPanel {
         JPanel text = new JPanel(new GridLayout(2, 1, 0, 2));
         text.setOpaque(false);
         text.add(Theme.label(team.name(), Font.BOLD, 14, Theme.TEXT));
-        text.add(Theme.label(String.format("%s · 목표 %d위 이내", team.country(), team.tier().targetRank()),
+        text.add(Theme.label(String.format("%s · 목표 %s", team.country(), team.tier().targetLabel()),
                 Font.PLAIN, 12, Theme.MUTED));
         card.add(text, BorderLayout.CENTER);
 
@@ -201,8 +201,8 @@ class StartPanel extends JPanel {
         paintCard(index);
         Team team = teams.get(index);
         Tier tier = team.tier();
-        selectionLabel.setText(String.format("<html><b>%s</b> 감독으로 부임 · %s등급 · 운영진 목표 %d위 이내</html>",
-                team.name(), tier.name(), tier.targetRank()));
+        selectionLabel.setText(String.format("<html><b>%s</b> 감독으로 부임 · %s등급 · 운영진 목표 %s</html>",
+                team.name(), tier.name(), tier.targetLabel()));
         selectionLabel.setForeground(Theme.TEXT);
         startButton.setEnabled(true);
     }

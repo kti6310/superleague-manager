@@ -34,7 +34,7 @@ public class MatchEngine {
         List<Player> homeXi = home.startingEleven();
         List<Player> awayXi = away.startingEleven();
 
-        double homePower = home.performance() * HOME_ADVANTAGE;
+        double homePower = home.performance() * (fixture.neutral() ? 1 : HOME_ADVANTAGE);
         double awayPower = away.performance();
 
         double homeExpected = BASE_GOALS * Math.pow(homePower / awayPower, STRENGTH_EXPONENT)

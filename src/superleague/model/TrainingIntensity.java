@@ -40,7 +40,7 @@ public enum TrainingIntensity {
     }
 
     public String summary() {
-        return String.format("%s (훈련 %+d, 사기 %+d, 컨디션 %+d, 부상 위험 %.1f%%)",
+        return String.format("%s (훈련 %+d, 사기 %+d, 체력 %+d, 부상 위험 %.1f%%)",
                 label, trainingDelta, moraleDelta, conditionDelta, injuryChance * 100);
     }
 }

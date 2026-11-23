@@ -10,7 +10,7 @@ final class Reactions {
     private Reactions() {
     }
 
-    static List<String> of(MatchResult r, Team team, int rank, Random random) {
+    static List<String> of(MatchResult r, Team team, String standing, Random random) {
         Team opp = r.fixture().opponentOf(team);
         int gf = r.goalsFor(team);
         int ga = r.goalsAgainst(team);
@@ -32,7 +32,7 @@ final class Reactions {
                         "[리뷰] 공수 모두 압도한 " + team.name() + ", 완벽한 90분");
             } else {
                 fans = pick(random, "깔끔한 승리! 승점 3점 챙겼다.", home ? "홈에서 이기는 맛! 다음 경기도 간다!" : "원정 승리! 원정 팬들 고생했어요!");
-                media = pick(random, "[경기 결과] " + team.name() + ", " + opp.name() + " 꺾고 " + rank + "위",
+                media = pick(random, "[경기 결과] " + team.name() + ", " + opp.name() + " 꺾고 " + standing,
                         "[리뷰] " + team.name() + ", 필요한 순간 결정력 발휘");
             }
         } else if (gf == ga) {

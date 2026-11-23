@@ -47,8 +47,8 @@ public class ConsoleUI {
 
         System.out.println();
         System.out.printf("%s 감독으로 부임했습니다.%n", userTeam.name());
-        System.out.printf("운영진 목표: %d위 이내 (전력 등급 %s)%n", userTeam.tier().targetRank(), userTeam.tier());
-        System.out.println("17라운드 후 중간 평가, 34라운드 후 시즌 종료 평가가 있습니다.");
+        System.out.printf("운영진 목표: %s (전력 등급 %s)%n", userTeam.tier().targetLabel(), userTeam.tier());
+        System.out.println(season.groupName(userTeam) + " 배정 · 정규 시즌 27경기일(같은 조 16경기 + 다른 조 9경기) → 플레이오프·8강·4강·결승. 14경기일 후 중간 평가가 있습니다.");
 
         while (!season.isFinished()) {
             if (!fastForward) {
@@ -76,8 +76,8 @@ public class ConsoleUI {
         System.out.println("감독으로 부임할 구단을 고르세요.");
         for (int i = 0; i < teams.size(); i++) {
             Team t = teams.get(i);
-            System.out.printf("%2d. %s %s  목표 %d위 이내%n", i + 1,
-                    Text.padRight(t.name(), 20), t.tier(), t.tier().targetRank());
+            System.out.printf("%2d. %s %s  목표 %s%n", i + 1,
+                    Text.padRight(t.name(), 20), t.tier(), t.tier().targetLabel());
         }
         if (auto) {
             Team t = teams.get(autoTeamIndex);
@@ -91,6 +91,9 @@ public class ConsoleUI {
         Team team = season.userTeam();
         while (true) {
             Fixture next = season.nextUserFixture();
+            if (next == null) {
+                return;
+            }
             Team opponent = next.opponentOf(team);
             String venue = next.home() == team ? "홈" : "원정";
             System.out.println();
@@ -132,7 +135,7 @@ public class ConsoleUI {
                 Text.bar(team.training(), 0, 100, 20), team.training(), team.trainingModifier() * 100, team.trainingCap());
         System.out.printf("구단 시설 %s %4d  (경기력 %+.1f%%)%n",
                 Text.bar(team.facility(), 0, Team.MAX_FACILITY, 20), team.facility(), team.facilityModifier() * 100);
-        System.out.printf("평균 컨디션 %.0f · 부상자 %d명 · 훈련: %s · 전술: %s%n",
+        System.out.printf("평균 체력 %.0f · 부상자 %d명 · 훈련: %s · 전술: %s%n",
                 team.averageCondition(), team.injuredCount(), team.intensity().label(), team.tactic().label());
         System.out.printf("예상 경기력 %.1f%n", team.performance());
     }
@@ -160,12 +163,17 @@ public class ConsoleUI {
     private void printRoundReport(Season season, RoundReport report) {
         Team team = season.userTeam();
         MatchResult r = report.userResult();
+        if (r == null) {
+            System.out.printf("%s  우리 팀 경기 없음 (%s)%n", Season.roundLabel(report.round() - 1), season.positionLabel(team));
+            report.news().forEach(n -> System.out.println("    · " + n));
+            return;
+        }
         int gf = r.goalsFor(team);
         int ga = r.goalsAgainst(team);
         String outcome = gf > ga ? "승" : gf == ga ? "무" : "패";
         if (fastForward) {
-            System.out.printf("R%-2d %s  %s  (%d위, 사기 %+d)%n", report.round(), outcome, r.scoreLine(),
-                    season.rankOf(team), team.morale());
+            System.out.printf("%s %s  %s  (%s, 사기 %+d)%n", Season.roundLabel(report.round() - 1), outcome, r.scoreLine(),
+                    season.positionLabel(team), team.morale());
             report.news().forEach(n -> System.out.println("    · " + n));
             return;
         }
@@ -186,7 +194,7 @@ public class ConsoleUI {
         for (String n : report.news()) {
             System.out.println("  [소식] " + n);
         }
-        System.out.printf("  현재 %d위 · 사기 %+d%n", season.rankOf(team), team.morale());
+        System.out.printf("  현재 %s · 사기 %+d%n", season.positionLabel(team), team.morale());
     }
 
     private void review(Season season, String title) {
@@ -195,7 +203,7 @@ public class ConsoleUI {
         Verdict verdict = Verdict.of(team.tier(), rank);
         System.out.println();
         System.out.println(LINE);
-        System.out.printf("[%s] %d위 · 목표 %d위 이내 → %s%n", title, rank, team.tier().targetRank(), verdict.label());
+        System.out.printf("[%s] %s · 목표 %s → %s%n", title, season.positionLabel(team), team.tier().targetLabel(), verdict.label());
         if (verdict == Verdict.MET) {
             System.out.println("운영진이 보상을 제안합니다. 하나를 고르세요.");
         } else if (verdict == Verdict.OUTSTANDING) {
@@ -238,7 +246,7 @@ public class ConsoleUI {
     private void printSquad(Team team) {
         System.out.println();
         System.out.println(LINE);
-        System.out.println("포지션  " + Text.padRight("이름", 22) + "나이  현재  최대  성장  컨디션  출전  득점  상태");
+        System.out.println("포지션  " + Text.padRight("이름", 22) + "나이  현재  최대  성장  체력  출전  득점  상태");
         List<Player> xi = team.startingEleven();
         team.squad().stream()
                 .sorted(Comparator.comparing(Player::position).thenComparing(Comparator.comparingInt(Player::rating).reversed()))
@@ -259,8 +267,8 @@ public class ConsoleUI {
         System.out.printf("  ENDING · %s%n", ending.title());
         System.out.println(LINE);
         System.out.println(ending.description());
-        System.out.printf("최종 %d위 · %d승 %d무 %d패 · 득실 %+d · 승점 %d%n",
-                rank, wins, team.drawn(), team.lost(), team.goalDifference(), team.points());
+        System.out.printf("최종 %s · 조별 %d승 %d무 %d패 · 득실 %+d · 승점 %d%n",
+                season.positionLabel(team), wins, team.drawn(), team.lost(), team.goalDifference(), team.points());
         Player star = ending.star();
         if (ending.starStays()) {
             System.out.printf("에이스 %s(능력 %d)는 잔류를 선언했습니다.%n", star.name(), star.rating());

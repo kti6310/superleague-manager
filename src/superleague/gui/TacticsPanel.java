@@ -41,7 +41,7 @@ class TacticsPanel extends JPanel {
     private final Team team;
     private final Runnable onChange;
     private final JComboBox<Formation> formationBox = new JComboBox<>(Formation.values());
-    private final JCheckBox autoBox = new JCheckBox("매 경기 자동 선발 (컨디션 반영)");
+    private final JCheckBox autoBox = new JCheckBox("매 경기 자동 선발 (체력 반영)");
     private final JButton autoButton = Theme.secondaryButton("지금 자동 선발");
     private final JLabel summary = Theme.label(" ", Font.PLAIN, 12, Theme.MUTED);
     private final JLabel effects = Theme.label(" ", Font.PLAIN, 12, Theme.MUTED);
@@ -325,7 +325,7 @@ class TacticsPanel extends JPanel {
         text.setOpaque(false);
         String name = p.name() + (current ? "  (현재)" : "") + (!p.isAvailable() ? "  · 부상 " + p.injuredRounds() + "경기" : "");
         text.add(Theme.label(name, Font.BOLD, 13, p.isAvailable() ? Theme.TEXT : Theme.BAD));
-        text.add(Theme.label(String.format("능력 %d · 컨디션 %d · %s · %dcm", p.rating(), p.condition(),
+        text.add(Theme.label(String.format("능력 %d · 체력 %d · %s · %dcm", p.rating(), p.condition(),
                 p.foot().label(), p.height()), Font.PLAIN, 12, Theme.MUTED));
         row.add(text, BorderLayout.CENTER);
         java.awt.Color fitColor = fit >= 0.999 ? Theme.GOOD : fit >= 0.88 ? Theme.WARN : Theme.BAD;
@@ -428,7 +428,7 @@ class TacticsPanel extends JPanel {
     }
 
     private class LineupModel extends AbstractTableModel {
-        private final String[] columns = {"자리", "선수", "역할", "포지션", "현재", "컨디션", "주발", "키", "적합도"};
+        private final String[] columns = {"자리", "선수", "역할", "포지션", "현재", "체력", "주발", "키", "적합도"};
 
         @Override
         public int getRowCount() {

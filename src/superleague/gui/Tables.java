@@ -31,7 +31,7 @@ final class Tables {
         table.setShowVerticalLines(false);
         table.setShowHorizontalLines(true);
         table.setIntercellSpacing(new java.awt.Dimension(0, 1));
-        table.setGridColor(new Color(0xEEF1F5));
+        table.setGridColor(Theme.BORDER);
         table.setFont(Theme.font(Font.PLAIN, 13));
         table.setSelectionBackground(Theme.ACCENT_SOFT);
         table.setSelectionForeground(Theme.TEXT);

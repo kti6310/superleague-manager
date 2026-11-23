@@ -21,7 +21,9 @@ import superleague.sim.MatchResult;
 import superleague.sim.ScheduleGenerator;
 
 public class Season {
-    public static final int MID_SEASON_ROUND = 17;
+    public static final int REGULAR_ROUNDS = 27;
+    public static final int TOTAL_ROUNDS = 34;
+    public static final int MID_SEASON_ROUND = 14;
     public static final int MAX_SEASONS = 5;
     public static final int OWNER_INTERVAL = 3;
 
@@ -42,19 +44,24 @@ public class Season {
             "2026-08-29", "2026-09-05", "2026-09-12", "2026-09-19", "2026-10-10", "2026-10-17", "2026-10-24",
             "2026-10-31", "2026-11-07", "2026-11-21", "2026-11-28", "2026-12-05", "2026-12-12", "2026-12-19",
             "2027-01-09", "2027-01-13", "2027-01-16", "2027-01-23", "2027-01-30", "2027-02-06", "2027-02-13",
-            "2027-02-20", "2027-02-27", "2027-03-03", "2027-03-06", "2027-03-13", "2027-03-20", "2027-04-03",
-            "2027-04-10", "2027-04-17", "2027-04-24", "2027-05-08", "2027-05-15", "2027-05-22")
+            "2027-02-20", "2027-02-27", "2027-03-03", "2027-03-06", "2027-03-13", "2027-03-20",
+            "2027-04-03", "2027-04-10", "2027-04-17", "2027-04-24", "2027-05-08", "2027-05-15", "2027-05-29")
             .map(LocalDate::parse).toArray(LocalDate[]::new);
 
     private LocalDate today = MATCH_DATES[0].minusDays(7);
     private OwnerReview pendingReview;
+    private GroupDraw draw;
+    private final java.util.Map<Team, Integer> reached = new java.util.HashMap<>();
+    private final java.util.Map<Team, Stage> eliminatedAt = new java.util.HashMap<>();
+    private final java.util.Map<Fixture, Tie> legOf = new java.util.HashMap<>();
+    private final List<Tie> ties = new ArrayList<>();
+    private List<Tie> currentTies = List.of();
     private final java.util.Map<LocalDate, DayActivity> plan = new java.util.HashMap<>();
 
     public Season(List<Team> teams, Team userTeam, Random random) {
         this.teams = teams;
         this.userTeam = userTeam;
         this.random = random;
-        this.schedule = ScheduleGenerator.doubleRoundRobin(teams, random);
         this.engine = new MatchEngine(random);
         this.events = new RandomEvents(random);
         motivate();
@@ -66,6 +73,168 @@ public class Season {
                 applyStyleInstructions(team);
             }
         }
+        newRegularSeason();
+    }
+
+    private void newRegularSeason() {
+        draw = GroupDraw.of(teams, random);
+        List<List<Fixture>> a = ScheduleGenerator.doubleRoundRobin(draw.groupA(), random);
+        List<List<Fixture>> b = ScheduleGenerator.doubleRoundRobin(draw.groupB(), random);
+        List<Team> ga = new ArrayList<>(draw.groupA());
+        List<Team> gb = new ArrayList<>(draw.groupB());
+        java.util.Collections.shuffle(ga, random);
+        java.util.Collections.shuffle(gb, random);
+        schedule = new ArrayList<>();
+        int group = 0;
+        for (int k = 0; schedule.size() < REGULAR_ROUNDS; ) {
+            List<Fixture> round = new ArrayList<>();
+            if (schedule.size() % 3 == 2) {
+                for (int i = 0; i < ga.size(); i++) {
+                    Team x = ga.get(i);
+                    Team y = gb.get((i + k) % gb.size());
+                    round.add(i % 2 == k % 2 ? new Fixture(0, x, y) : new Fixture(0, y, x));
+                }
+                k++;
+            } else {
+                round.addAll(a.get(group));
+                round.addAll(b.get(group));
+                group++;
+            }
+            schedule.add(round);
+        }
+        reached.clear();
+        eliminatedAt.clear();
+        legOf.clear();
+        ties.clear();
+        currentTies = List.of();
+    }
+
+    public static String roundLabel(int index) {
+        if (index < REGULAR_ROUNDS) {
+            return (index + 1) + "라운드";
+        }
+        int k = index - REGULAR_ROUNDS;
+        Stage stage = Stage.values()[Math.min(k / 2, Stage.values().length - 1)];
+        return stage == Stage.FINAL ? "결승" : stage.label + " " + (k % 2 + 1) + "차전";
+    }
+
+    public GroupDraw draw() {
+        return draw;
+    }
+
+    public List<Tie> ties() {
+        return ties;
+    }
+
+    public List<Team> group(Team team) {
+        return draw.groupA().contains(team) ? draw.groupA() : draw.groupB();
+    }
+
+    public String groupName(Team team) {
+        return draw.groupA().contains(team) ? "A조" : "B조";
+    }
+
+    public List<Team> groupStandings(List<Team> group) {
+        List<Team> sorted = new ArrayList<>(group);
+        sorted.sort(Comparator.comparingInt(Team::points).reversed()
+                .thenComparing(Comparator.comparingInt(Team::goalDifference).reversed())
+                .thenComparing(Comparator.comparingInt(Team::goalsFor).reversed())
+                .thenComparing(Team::name));
+        return sorted;
+    }
+
+    public int groupPosition(Team team) {
+        return groupStandings(group(team)).indexOf(team) + 1;
+    }
+
+    public boolean isPostseason() {
+        return roundsPlayed >= REGULAR_ROUNDS;
+    }
+
+    public String positionLabel(Team team) {
+        int pos = groupPosition(team);
+        if (!isPostseason()) {
+            return roundsPlayed == 0 ? groupName(team) + " · 개막 전" : groupName(team) + " " + pos + "위";
+        }
+        int r = reached.getOrDefault(team, 0);
+        if (r == 5) {
+            return "우승";
+        }
+        Stage out = eliminatedAt.get(team);
+        if (out == Stage.FINAL) {
+            return "준우승";
+        }
+        if (out != null) {
+            return out.label + " 탈락";
+        }
+        if (r == 0) {
+            return groupName(team) + " " + pos + "위 · 탈락";
+        }
+        return Stage.values()[r - 1].label + " 진출";
+    }
+
+    private void advancePostseason(List<String> news) {
+        if (roundsPlayed == REGULAR_ROUNDS) {
+            List<Tie> playoff = new ArrayList<>();
+            for (List<Team> group : List.of(draw.groupA(), draw.groupB())) {
+                List<Team> table = groupStandings(group);
+                for (int i = 0; i < 5; i++) {
+                    reached.put(table.get(i), i < 3 ? 2 : 1);
+                }
+                playoff.add(new Tie(Stage.PLAYOFF, table.get(4), table.get(3)));
+            }
+            startStage(playoff, news);
+            return;
+        }
+        if (currentTies.isEmpty() || !currentTies.stream().allMatch(Tie::complete)) {
+            return;
+        }
+        for (Tie tie : currentTies) {
+            double p = tie.first.performance() / (tie.first.performance() + tie.second.performance());
+            tie.resolve(random.nextDouble() < p);
+            Team loser = tie.winner() == tie.first ? tie.second : tie.first;
+            reached.put(tie.winner(), tie.stage.reachedOnWin());
+            eliminatedAt.put(loser, tie.stage);
+            news.add(String.format("[%s] %s", tie.stage.label, tie.summary()));
+        }
+        Stage stage = currentTies.get(0).stage;
+        List<Team> w = currentTies.stream().map(Tie::winner).toList();
+        switch (stage) {
+            case PLAYOFF -> {
+                List<Team> a = groupStandings(draw.groupA());
+                List<Team> b = groupStandings(draw.groupB());
+                startStage(List.of(new Tie(Stage.QUARTER, w.get(1), a.get(0)), new Tie(Stage.QUARTER, a.get(2), b.get(1)),
+                        new Tie(Stage.QUARTER, w.get(0), b.get(0)), new Tie(Stage.QUARTER, b.get(2), a.get(1))), news);
+            }
+            case QUARTER -> startStage(List.of(seeded(Stage.SEMI, w.get(0), w.get(1)),
+                    seeded(Stage.SEMI, w.get(2), w.get(3))), news);
+            case SEMI -> startStage(List.of(new Tie(Stage.FINAL, w.get(0), w.get(1))), news);
+            case FINAL -> currentTies = List.of();
+        }
+    }
+
+    private Tie seeded(Stage stage, Team x, Team y) {
+        return rankOf(x) > rankOf(y) ? new Tie(stage, x, y) : new Tie(stage, y, x);
+    }
+
+    private void startStage(List<Tie> stageTies, List<String> news) {
+        currentTies = stageTies;
+        ties.addAll(stageTies);
+        Stage stage = stageTies.get(0).stage;
+        for (int leg = 0; leg < stage.legs; leg++) {
+            List<Fixture> round = new ArrayList<>();
+            for (Tie tie : stageTies) {
+                Fixture f = leg == 0
+                        ? new Fixture(schedule.size() + 1, tie.first, tie.second, stage == Stage.FINAL)
+                        : new Fixture(schedule.size() + 1, tie.second, tie.first);
+                legOf.put(f, tie);
+                round.add(f);
+            }
+            schedule.add(round);
+        }
+        stageTies.stream().filter(t -> t.first == userTeam || t.second == userTeam).findFirst()
+                .ifPresent(t -> news.add(String.format("%s 대진: %s vs %s%s", stage.label, t.first.name(), t.second.name(),
+                        stage == Stage.FINAL ? " (중립 구장 단판)" : " (홈 앤드 어웨이)")));
     }
 
     public Team userTeam() {
@@ -119,8 +288,7 @@ public class Season {
         if (rank <= userTeam.tier().targetRank()) {
             targetsMet++;
         }
-        career.add(String.format("%s · %d위%s · 승점 %d · %d승 %d무 %d패 · 득점왕 %s(%d골)", seasonLabel(), rank,
-                rank == 1 ? " 우승" : "", userTeam.points(), userTeam.won(), userTeam.drawn(), userTeam.lost(),
+        career.add(String.format("%s · %s · 조별 승점 %d · %d승 %d무 %d패 · 득점왕 %s(%d골)", seasonLabel(), positionLabel(userTeam), userTeam.points(), userTeam.won(), userTeam.drawn(), userTeam.lost(),
                 topScorer.name(), topScorer.goals()));
     }
 
@@ -142,7 +310,7 @@ public class Season {
                 team.autoPick();
             }
         }
-        schedule = ScheduleGenerator.doubleRoundRobin(teams, random);
+        newRegularSeason();
         userResults.clear();
         roundsPlayed = 0;
         plan.clear();
@@ -264,11 +432,11 @@ public class Season {
     }
 
     public int totalRounds() {
-        return schedule.size();
+        return TOTAL_ROUNDS;
     }
 
     public boolean isFinished() {
-        return roundsPlayed >= schedule.size();
+        return roundsPlayed >= TOTAL_ROUNDS;
     }
 
     public List<MatchResult> userResults() {
@@ -277,7 +445,7 @@ public class Season {
 
     public List<Fixture> userSchedule() {
         return schedule.stream()
-                .map(round -> round.stream().filter(f -> f.involves(userTeam)).findFirst().orElseThrow())
+                .map(round -> round.stream().filter(f -> f.involves(userTeam)).findFirst().orElse(null))
                 .toList();
     }
 
@@ -288,7 +456,7 @@ public class Season {
         return schedule.get(roundsPlayed).stream()
                 .filter(f -> f.involves(userTeam))
                 .findFirst()
-                .orElseThrow();
+                .orElse(null);
     }
 
     public RoundReport playNextRound() {
@@ -336,8 +504,12 @@ public class Season {
                 r = engine.play(f);
             }
             results.add(r);
-            f.home().recordResult(r.homeGoals(), r.awayGoals());
-            f.away().recordResult(r.awayGoals(), r.homeGoals());
+            if (roundsPlayed < REGULAR_ROUNDS) {
+                f.home().recordResult(r.homeGoals(), r.awayGoals());
+                f.away().recordResult(r.awayGoals(), r.homeGoals());
+            } else {
+                legOf.get(f).add(r);
+            }
             applyMorale(f.home(), f.away(), r.homeGoals(), r.awayGoals());
             applyMorale(f.away(), f.home(), r.awayGoals(), r.homeGoals());
             if (f.involves(userTeam)) {
@@ -380,8 +552,10 @@ public class Season {
 
         today = dateOfRound(roundsPlayed).plusDays(1);
         roundsPlayed++;
-        List<String> reactions = Reactions.of(userResult, userTeam, rankOf(userTeam), random);
-        OwnerReview review = roundsPlayed % OWNER_INTERVAL == 0 ? ownerReview() : null;
+        advancePostseason(news);
+        List<String> reactions = userResult == null ? List.of()
+                : Reactions.of(userResult, userTeam, positionLabel(userTeam), random);
+        OwnerReview review = userResult != null && userResults.size() % OWNER_INTERVAL == 0 ? ownerReview() : null;
         pendingReview = review != null && review.reward() ? review : null;
         return new RoundReport(roundsPlayed, results, userResult, news, reactions, review);
     }
@@ -438,11 +612,14 @@ public class Season {
 
     private void applyTraining(Team team, List<String> news) {
         TrainingIntensity intensity = team.intensity();
-        team.changeTraining(intensity.trainingDelta() + team.teamTraining().training);
+        double weeks = roundsPlayed == 0 ? 1 : java.time.temporal.ChronoUnit.DAYS.between(
+                dateOfRound(roundsPlayed - 1), dateOfRound(roundsPlayed)) / 7.0;
+        team.changeTraining(randomRound((intensity.trainingDelta() + team.teamTraining().training) * weeks));
         team.changeMorale(intensity.moraleDelta() + team.teamTraining().morale);
+        int condition = randomRound((intensity.conditionDelta() + team.teamTraining().condition) * weeks);
         for (Player p : team.squad()) {
-            p.changeCondition(intensity.conditionDelta() + team.teamTraining().condition);
-            if (p.isAvailable() && random.nextDouble() < intensity.injuryChance()) {
+            p.changeCondition(condition);
+            if (p.isAvailable() && random.nextDouble() < intensity.injuryChance() * weeks) {
                 int rounds = 1 + random.nextInt(4);
                 p.injure(rounds);
                 if (team == userTeam) {
@@ -556,7 +733,9 @@ public class Season {
 
     public List<Team> standings() {
         List<Team> sorted = new ArrayList<>(teams);
-        sorted.sort(Comparator.comparingInt(Team::points).reversed()
+        sorted.sort(Comparator.comparingInt((Team t) -> -reached.getOrDefault(t, 0))
+                .thenComparingInt(this::groupPosition)
+                .thenComparing(Comparator.comparingInt(Team::points).reversed())
                 .thenComparing(Comparator.comparingInt(Team::goalDifference).reversed())
                 .thenComparing(Comparator.comparingInt(Team::goalsFor).reversed())
                 .thenComparing(Team::name));

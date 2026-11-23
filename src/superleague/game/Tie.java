@@ -12,6 +12,7 @@ public final class Tie {
     private final List<MatchResult> legs = new ArrayList<>();
     private Team winner;
     private String note = "";
+    private Shootout shootout;
 
     Tie(Stage stage, Team first, Team second) {
         this.stage = stage;
@@ -43,7 +44,11 @@ public final class Tie {
         return legs.size();
     }
 
-    void resolve(boolean firstWinsShootout) {
+    public Shootout shootout() {
+        return shootout;
+    }
+
+    void resolve(java.util.Random random) {
         int a = goals(first);
         int b = goals(second);
         if (a != b) {
@@ -51,8 +56,10 @@ public final class Tie {
             note = stage.legs > 1 ? String.format("합계 %d-%d", a, b) : "";
             return;
         }
-        winner = firstWinsShootout ? first : second;
-        note = (stage.legs > 1 ? String.format("합계 %d-%d, ", a, b) : "") + "승부차기 승";
+        Team home = legs.get(legs.size() - 1).fixture().home();
+        shootout = new Shootout(home, home == first ? second : first, random);
+        winner = shootout.winner();
+        note = (stage.legs > 1 ? String.format("합계 %d-%d, ", a, b) : "") + "승부차기 " + shootout.score();
     }
 
     public String summary() {

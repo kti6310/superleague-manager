@@ -632,6 +632,7 @@ class GamePanel extends JPanel {
         recordRound(report);
         showRoundResult(report);
         tabs.setSelectedIndex(0);
+        ShootoutDialog.show(this, report.shootout());
         refresh();
         afterRound(report);
     }

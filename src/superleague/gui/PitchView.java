@@ -27,6 +27,8 @@ class PitchView extends JComponent {
     private final Random random = new Random();
     private final double[][] cur = new double[N * 2][2];
     private final double[][] target = new double[N * 2][2];
+    private final double[][] vel = new double[N * 2][2];
+    private final double[] ballVel = new double[2];
     private final double[] ball = {0.5, 0.5};
     private final double[] ballTarget = {0.5, 0.5};
     private final Timer anim;
@@ -49,7 +51,7 @@ class PitchView extends JComponent {
             cur[i][0] = target[i][0];
             cur[i][1] = target[i][1];
         }
-        anim = new Timer(30, e -> animate());
+        anim = new Timer(16, e -> animate());
     }
 
     void start() {
@@ -239,19 +241,11 @@ class PitchView extends JComponent {
         boolean moving = false;
         for (int i = 0; i < N * 2; i++) {
             for (int k = 0; k < 2; k++) {
-                double d = target[i][k] - cur[i][k];
-                if (Math.abs(d) > 0.0005) {
-                    cur[i][k] += d * 0.08;
-                    moving = true;
-                }
+                moving |= spring(cur[i], vel[i], target[i], k, 0.010, 0.16, 0.012);
             }
         }
         for (int k = 0; k < 2; k++) {
-            double d = ballTarget[k] - ball[k];
-            if (Math.abs(d) > 0.0005) {
-                ball[k] += d * 0.16;
-                moving = true;
-            }
+            moving |= spring(ball, ballVel, ballTarget, k, 0.030, 0.26, 0.03);
         }
         if (bannerTicks > 0) {
             bannerTicks--;
@@ -260,6 +254,19 @@ class PitchView extends JComponent {
         if (moving) {
             repaint();
         }
+    }
+
+    // Damped spring: players accelerate and ease out instead of jumping toward each new target.
+    private static boolean spring(double[] pos, double[] v, double[] goal, int k, double stiffness, double damping,
+                                  double maxSpeed) {
+        double d = goal[k] - pos[k];
+        if (Math.abs(d) < 0.0004 && Math.abs(v[k]) < 0.0002) {
+            v[k] = 0;
+            return false;
+        }
+        v[k] = Math.max(-maxSpeed, Math.min(maxSpeed, v[k] * (1 - damping) + d * stiffness));
+        pos[k] += v[k];
+        return true;
     }
 
     @Override

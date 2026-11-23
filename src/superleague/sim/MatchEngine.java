@@ -28,14 +28,15 @@ public class MatchEngine {
         return new LiveMatch(this, fixture);
     }
 
-    Commentary.Result simulate(Fixture fixture, int cut, int startHome, int startAway, int stoppage) {
+    Commentary.Result simulate(Fixture fixture, int cut, int startHome, int startAway, int stoppage,
+                               double homeFitness, double awayFitness) {
         Team home = fixture.home();
         Team away = fixture.away();
         List<Player> homeXi = home.startingEleven();
         List<Player> awayXi = away.startingEleven();
 
-        double homePower = home.performance() * (fixture.neutral() ? 1 : HOME_ADVANTAGE);
-        double awayPower = away.performance();
+        double homePower = home.performance() * (fixture.neutral() ? 1 : HOME_ADVANTAGE) * homeFitness;
+        double awayPower = away.performance() * awayFitness;
 
         double homeExpected = BASE_GOALS * Math.pow(homePower / awayPower, STRENGTH_EXPONENT)
                 * home.tactic().attackFactor() * away.tactic().concedeFactor()

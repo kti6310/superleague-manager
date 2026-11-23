@@ -56,6 +56,7 @@ public class Season {
     private final java.util.Map<Fixture, Tie> legOf = new java.util.HashMap<>();
     private final List<Tie> ties = new ArrayList<>();
     private List<Tie> currentTies = List.of();
+    private Shootout userShootout;
     private final java.util.Map<LocalDate, DayActivity> plan = new java.util.HashMap<>();
 
     public Season(List<Team> teams, Team userTeam, Random random) {
@@ -190,8 +191,10 @@ public class Season {
             return;
         }
         for (Tie tie : currentTies) {
-            double p = tie.first.performance() / (tie.first.performance() + tie.second.performance());
-            tie.resolve(random.nextDouble() < p);
+            tie.resolve(random);
+            if (tie.shootout() != null && (tie.first == userTeam || tie.second == userTeam)) {
+                userShootout = tie.shootout();
+            }
             Team loser = tie.winner() == tie.first ? tie.second : tie.first;
             reached.put(tie.winner(), tie.stage.reachedOnWin());
             eliminatedAt.put(loser, tie.stage);
@@ -364,9 +367,45 @@ public class Season {
         if (isFinished() || isMatchDay()) {
             return news;
         }
-        applyDay(userTeam, activityOn(today), news);
+        DayActivity activity = activityOn(today);
+        int training = userTeam.training();
+        int morale = userTeam.morale();
+        double condition = userTeam.averageCondition();
+        List<String> injuries = new ArrayList<>();
+        applyDay(userTeam, activity, injuries);
+        String what = activity == DayActivity.TRAINING
+                ? String.format("팀 훈련 '%s' (%s)", userTeam.teamTraining().label, userTeam.intensity().label())
+                : activity.label;
+        news.add(String.format("  %s · 훈련 수준 %d→%d · 평균 체력 %.0f→%.0f · 사기 %+d", what, training,
+                userTeam.training(), condition, userTeam.averageCondition(), userTeam.morale() - morale));
+        news.add("  " + squadReaction(activity));
+        news.addAll(injuries);
         today = today.plusDays(1);
         return news;
+    }
+
+    private String squadReaction(DayActivity activity) {
+        List<Player> xi = userTeam.startingEleven().stream().filter(Player::isAvailable).toList();
+        String star = xi.isEmpty() ? "주장" : xi.get(random.nextInt(xi.size())).name();
+        double condition = userTeam.averageCondition();
+        return switch (activity) {
+            case TRAINING -> condition < 75
+                    ? pick("선수들이 지친 기색을 보입니다. 강도를 낮추거나 휴식을 고려해 보세요.",
+                    star + " 선수가 \"다리가 무겁다\"며 코치진에게 휴식을 요청했습니다.")
+                    : userTeam.morale() < -20
+                    ? pick("훈련장 분위기가 가라앉아 있습니다. 몇몇 선수가 불만을 드러냈습니다.",
+                    "선수들이 훈련에 집중하지 못하고 있습니다.")
+                    : pick(star + " 선수가 훈련에서 특히 돋보였습니다.", "선수들이 집중력 있게 훈련을 소화했습니다.",
+                    "훈련장 분위기가 활기찹니다. 코치진도 만족스러운 표정입니다.",
+                    star + " 선수가 남아서 개인 훈련을 더 했습니다.");
+            case LIGHT -> pick("경기를 앞두고 가볍게 몸을 풀었습니다.", "세트피스를 맞춰 보며 내일 경기를 준비했습니다.");
+            case RECOVERY -> pick("회복 훈련으로 지친 다리를 풀었습니다.", "수영장과 마사지로 피로를 회복했습니다.");
+            default -> pick("휴식일. 선수들이 가족과 시간을 보내며 재충전했습니다.", "휴식일. 다들 푹 쉬고 돌아올 예정입니다.");
+        };
+    }
+
+    private String pick(String... options) {
+        return options[random.nextInt(options.length)];
     }
 
     private int randomRound(double x) {
@@ -557,7 +596,9 @@ public class Season {
                 : Reactions.of(userResult, userTeam, positionLabel(userTeam), random);
         OwnerReview review = userResult != null && userResults.size() % OWNER_INTERVAL == 0 ? ownerReview() : null;
         pendingReview = review != null && review.reward() ? review : null;
-        return new RoundReport(roundsPlayed, results, userResult, news, reactions, review);
+        Shootout shootout = userShootout;
+        userShootout = null;
+        return new RoundReport(roundsPlayed, results, userResult, news, reactions, review, shootout);
     }
 
     private OwnerReview ownerReview() {

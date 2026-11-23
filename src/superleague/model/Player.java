@@ -272,7 +272,7 @@ public class Player {
         }
         double gapFactor = Math.min(1.0, (potential - rating) / 20.0);
         double trainingFactor = 0.4 + teamTraining / 100.0;
-        return 0.10 * ageFactor * gapFactor * trainingFactor;
+        return 0.05 * ageFactor * gapFactor * trainingFactor;
     }
 
     public void grow() {

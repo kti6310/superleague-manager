@@ -14,6 +14,7 @@ import superleague.model.Team;
 public final class LiveMatch {
     public static final int MAX_SUBS = 5;
     public static final int MAX_WINDOWS = 3;
+    private static final double FATIGUE_EFFECT = 0.006;
 
     private final MatchEngine engine;
     private final Fixture fixture;
@@ -48,7 +49,7 @@ public final class LiveMatch {
             Instructions in = t.instructions();
             startInstructions.put(t, new int[]{in.pressing(), in.tempo(), in.line(), in.width()});
         }
-        Commentary.Result r = engine.simulate(fixture, -1, 0, 0, 0);
+        Commentary.Result r = engine.simulate(fixture, -1, 0, 0, 0, fitness(fixture.home(), 0), fitness(fixture.away(), 0));
         events = r.events();
         possession = r.possession();
         homeCorners = r.homeCorners();
@@ -80,6 +81,23 @@ public final class LiveMatch {
         }
         int minutes = Math.max(0, Math.min(clock, span[1]) - span[0]);
         return Math.max(0, (int) Math.round(p.condition() - MatchEngine.fatigueFor(team, p) * minutes / 90.0));
+    }
+
+    // Average in-match tiredness of the current XI over the remaining minutes lowers team power.
+    double fitness(Team team, int from) {
+        double drop = 0;
+        int n = 0;
+        for (int i = 0; i < 11; i++) {
+            Player p = team.slotPlayer(i);
+            int[] span = p == null ? null : played.get(p);
+            if (span == null) {
+                continue;
+            }
+            double midMinute = (Math.max(from, span[0]) + 90) / 2.0;
+            drop += MatchEngine.fatigueFor(team, p) * Math.max(0, midMinute - span[0]) / 90.0;
+            n++;
+        }
+        return n == 0 ? 1 : 1 - FATIGUE_EFFECT * drop / n;
     }
 
     public List<Player> bench(Team team) {
@@ -168,7 +186,9 @@ public final class LiveMatch {
         for (MatchEvent e : added) {
             prefix.add(new MatchEvent(e.minute(), e.extra(), e.side(), e.type(), e.text(), h, a, e.player(), false));
         }
-        Commentary.Result r = engine.simulate(fixture, cut, h, a, stoppage);
+        int from = cut < 0 ? 0 : cut >= 450 && cut <= 459 ? 45 : Math.min(90, cut / 10);
+        Commentary.Result r = engine.simulate(fixture, cut, h, a, stoppage,
+                fitness(fixture.home(), from), fitness(fixture.away(), from));
         double before = 1 - Commentary.remainingFraction(cut);
         possession = (int) Math.round(possession * before + r.possession() * (1 - before));
         homeCorners = (int) Math.round(homeCorners * before) + r.homeCorners();

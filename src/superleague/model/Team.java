@@ -219,7 +219,7 @@ public class Team {
             }
         }
         for (Formation.Slot d : Formation.DOTS) {
-            if (targets.stream().noneMatch(s -> Math.hypot(s.x() - d.x(), s.y() - d.y()) < 0.07)) {
+            if (targets.stream().noneMatch(s -> Math.hypot(s.x() - d.x(), s.y() - d.y()) < 0.1)) {
                 targets.add(d);
             }
         }

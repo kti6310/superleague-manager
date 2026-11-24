@@ -152,7 +152,7 @@ public final class Commentary {
             }
             int extra = d.type() == Type.HALFTIME ? 0 : d.extra();
             events.add(new MatchEvent(d.minute(), extra, d.side(), d.type(), text(d, h, a, possession), h, a,
-                    d.actor(), d.own()));
+                    d.actor(), d.own(), d.type() == Type.GOAL && !d.own() ? d.other() : null));
         }
         return new Result(events, possession, corners[0], corners[1], stoppage);
     }

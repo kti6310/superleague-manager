@@ -282,6 +282,8 @@ public class Player {
     public int newSeason(java.util.Random random) {
         age++;
         goals = 0;
+        assists = 0;
+        cleanSheets = 0;
         appearances = 0;
         condition = 100;
         injuredRounds = 0;
@@ -309,6 +311,25 @@ public class Player {
 
     public void addGoal() {
         goals++;
+    }
+
+    private int assists;
+    private int cleanSheets;
+
+    public int assists() {
+        return assists;
+    }
+
+    public int cleanSheets() {
+        return cleanSheets;
+    }
+
+    public void addAssist() {
+        assists++;
+    }
+
+    public void addCleanSheet() {
+        cleanSheets++;
     }
 
     public void addAppearance() {

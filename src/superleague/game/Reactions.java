@@ -6,7 +6,7 @@ import superleague.model.Team;
 import superleague.sim.MatchEvent;
 import superleague.sim.MatchResult;
 
-final class Reactions {
+public final class Reactions {
     private Reactions() {
     }
 
@@ -77,6 +77,29 @@ final class Reactions {
                 .map(en -> en.getValue() >= 3 ? en.getKey() + " 해트트릭! 오늘의 영웅!"
                         : en.getValue() == 2 ? en.getKey() + " 멀티골 미쳤다!" : null)
                 .orElse(null);
+    }
+
+    public static List<String> season(Team team, String placement, int rank, Random random) {
+        int target = team.tier().targetRank();
+        String fans;
+        String media;
+        if (rank == 1) {
+            fans = pick(random, "우승이다!!! 시내 퍼레이드 날짜 언제냐!", "이 순간을 평생 잊지 못할 거다. 챔피언!");
+            media = "[우승] " + team.name() + ", 슈퍼리그 정상에 서다";
+        } else if (rank <= target - 2) {
+            fans = pick(random, "기대 이상의 시즌! 감독님 재계약 가자!", "이런 시즌을 보게 될 줄은 몰랐다. 자랑스럽다!");
+            media = "[결산] " + team.name() + ", " + placement + "로 예상을 뛰어넘은 시즌";
+        } else if (rank <= target) {
+            fans = pick(random, "목표는 달성했다. 다음 시즌엔 더 높이!", "무난한 시즌. 이제 우승을 노려 보자.");
+            media = "[결산] " + team.name() + ", " + placement + " · 운영진 목표 달성";
+        } else if (rank <= target + 3) {
+            fans = pick(random, "아쉬운 시즌이다. 보강이 필요해 보인다.", "조금만 더 했으면... 다음 시즌을 기대한다.");
+            media = "[결산] " + team.name() + ", " + placement + " · 목표에 조금 못 미쳐";
+        } else {
+            fans = pick(random, "실망스러운 시즌. 감독 책임론이 나올 만하다.", "이 정도 선수단으로 이 성적은 납득이 안 된다.");
+            media = "[비판] " + team.name() + ", " + placement + " · 기대 이하 성적에 거센 비판";
+        }
+        return List.of("팬 반응: \"" + fans + "\"", "언론: " + media);
     }
 
     private static String pick(Random random, String... options) {

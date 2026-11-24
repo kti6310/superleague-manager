@@ -240,6 +240,32 @@ public class Season {
                         stage == Stage.FINAL ? " (중립 구장 단판)" : " (홈 앤드 어웨이)")));
     }
 
+    public List<Team> teams() {
+        return teams;
+    }
+
+    public Team teamOf(Player p) {
+        return teams.stream().filter(t -> t.squad().contains(p)).findFirst().orElse(null);
+    }
+
+    // Season MVP score: goal involvement, keeper/defender clean sheets, games played, quality, and how far the team went.
+    public double mvpScore(Player p) {
+        Team t = teamOf(p);
+        boolean defensive = p.position() == superleague.model.Position.GK || p.position() == superleague.model.Position.DF;
+        int rank = t == null ? 18 : rankOf(t);
+        return p.goals() * 4 + p.assists() * 3 + (defensive ? p.cleanSheets() * 2.5 : 0) + p.appearances() * 0.5
+                + (p.rating() - 150) * 0.15 + Math.max(0, 10 - rank) * 1.2;
+    }
+
+    public Player best(java.util.Collection<Player> pool, java.util.function.ToDoubleFunction<Player> score) {
+        return pool.stream().filter(p -> p.appearances() > 0)
+                .max(Comparator.comparingDouble(score).thenComparingInt(Player::rating)).orElse(null);
+    }
+
+    public List<Player> allPlayers() {
+        return teams.stream().flatMap(t -> t.squad().stream()).toList();
+    }
+
     public Team userTeam() {
         return userTeam;
     }

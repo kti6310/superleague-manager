@@ -925,9 +925,11 @@ class GamePanel extends JPanel {
     }
 
     private void finishSeason() {
-        review("시즌 종료 평가");
         refresh();
         int rank = season.rankOf(team);
+        SeasonReviewDialog.show(this, season, Ending.decide(team, rank));
+        review("시즌 종료 평가");
+        refresh();
         Ending ending = Ending.decide(team, rank);
         Player topScorer = team.squad().stream().max(Comparator.comparingInt(Player::goals)).orElseThrow();
         season.closeSeason(topScorer);

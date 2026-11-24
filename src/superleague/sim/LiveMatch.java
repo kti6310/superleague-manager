@@ -289,6 +289,18 @@ public final class LiveMatch {
         for (MatchEvent e : events) {
             if (e.type() == MatchEvent.Type.GOAL && !e.ownGoal() && e.player() != null) {
                 e.player().addGoal();
+                if (e.assist() != null) {
+                    e.assist().addAssist();
+                }
+            }
+        }
+        for (Team team : starters.keySet()) {
+            int conceded = team == fixture.home() ? r.awayGoals() : r.homeGoals();
+            if (conceded == 0) {
+                team.squad().stream()
+                        .filter(p -> p.position() == superleague.model.Position.GK && played.containsKey(p)
+                                && played.get(p)[1] - played.get(p)[0] >= 60)
+                        .forEach(Player::addCleanSheet);
             }
         }
         for (Map.Entry<Team, Player[]> entry : starters.entrySet()) {

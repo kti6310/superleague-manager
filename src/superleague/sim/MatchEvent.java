@@ -3,7 +3,12 @@ package superleague.sim;
 import superleague.model.Player;
 
 public record MatchEvent(int minute, int extra, Side side, Type type, String text, int homeScore, int awayScore,
-                         Player player, boolean ownGoal) {
+                         Player player, boolean ownGoal, Player assist) {
+
+    public MatchEvent(int minute, int extra, Side side, Type type, String text, int homeScore, int awayScore,
+                      Player player, boolean ownGoal) {
+        this(minute, extra, side, type, text, homeScore, awayScore, player, ownGoal, null);
+    }
 
     public enum Side {
         HOME, AWAY, NONE

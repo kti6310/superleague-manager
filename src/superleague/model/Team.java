@@ -23,6 +23,7 @@ public class Team {
     private TeamTraining teamTraining = TeamTraining.BALANCED;
     private Formation formation = Formation.F4_4_2;
     private List<Formation.Slot> customSlots;
+    private Formation baseFormation = Formation.F4_4_2;
     private final TacticalRole[] duties = new TacticalRole[11];
     private Player[] lineup = new Player[11];
     private final Instructions instructions = new Instructions();
@@ -198,15 +199,60 @@ public class Team {
 
     public void moveSlot(int index, Formation.Slot target) {
         if (formation != Formation.CUSTOM) {
+            baseFormation = formation;
             customSlots = new ArrayList<>(slots());
             formation = Formation.CUSTOM;
         }
         customSlots.set(index, target);
+        if (customSlots.equals(baseFormation.slots())) {
+            formation = baseFormation;
+        }
+    }
+
+    // Original spots of the formation the custom one came from, so a player dragged back lands exactly where he was.
+    public List<Formation.Slot> dropTargets() {
+        Formation base = formation == Formation.CUSTOM ? baseFormation : formation;
+        List<Formation.Slot> targets = new ArrayList<>();
+        for (Formation.Slot s : base.slots()) {
+            if (s.group() != Position.GK) {
+                targets.add(s);
+            }
+        }
+        for (Formation.Slot d : Formation.DOTS) {
+            if (targets.stream().noneMatch(s -> Math.hypot(s.x() - d.x(), s.y() - d.y()) < 0.07)) {
+                targets.add(d);
+            }
+        }
+        return targets;
+    }
+
+    public record Setup(Formation formation, Formation baseFormation, List<Formation.Slot> customSlots, Player[] lineup,
+                        TacticalRole[] duties, Tactic tactic, int[] instructions, boolean autoLineup) {
+    }
+
+    public Setup saveSetup() {
+        return new Setup(formation, baseFormation, customSlots == null ? null : List.copyOf(customSlots), lineup.clone(),
+                duties.clone(), tactic, new int[]{instructions.pressing(), instructions.tempo(), instructions.line(),
+                instructions.width()}, autoLineup);
+    }
+
+    public void restoreSetup(Setup s) {
+        formation = s.formation();
+        baseFormation = s.baseFormation();
+        customSlots = s.customSlots() == null ? null : new ArrayList<>(s.customSlots());
+        lineup = s.lineup().clone();
+        System.arraycopy(s.duties(), 0, duties, 0, duties.length);
+        tactic = s.tactic();
+        instructions.set(s.instructions()[0], s.instructions()[1], s.instructions()[2], s.instructions()[3]);
+        autoLineup = s.autoLineup();
     }
 
     public void setFormation(Formation formation) {
         if (formation == this.formation) {
             return;
+        }
+        if (formation != Formation.CUSTOM) {
+            baseFormation = formation;
         }
         if (formation == Formation.CUSTOM && customSlots == null) {
             customSlots = new ArrayList<>(slots());
@@ -243,8 +289,16 @@ public class Team {
     }
 
     public void autoPick() {
+        List<Player> keep = startingEleven();
         lineup = new Player[11];
-        autoPick(List.of());
+        autoPick(lineupLocked ? keep : List.of());
+    }
+
+    private boolean lineupLocked;
+
+    // While locked (mid-match tactics), formation changes and auto-pick only rearrange the current XI.
+    public void setLineupLocked(boolean locked) {
+        lineupLocked = locked;
     }
 
     private void autoPick(List<Player> preferred) {
@@ -266,11 +320,11 @@ public class Team {
             }
         }
         for (boolean sameGroupOnly : new boolean[]{true, false}) {
-            fill(slots, sameGroupOnly);
+            fill(slots, sameGroupOnly, lineupLocked ? preferred : squad);
         }
     }
 
-    private void fill(List<Formation.Slot> slots, boolean sameGroupOnly) {
+    private void fill(List<Formation.Slot> slots, boolean sameGroupOnly, List<Player> pool) {
         while (true) {
             int bestSlot = -1;
             Player bestPlayer = null;
@@ -279,7 +333,7 @@ public class Team {
                 if (lineup[i] != null) {
                     continue;
                 }
-                for (Player p : squad) {
+                for (Player p : pool) {
                     if (!p.isAvailable() || contains(p)) {
                         continue;
                     }

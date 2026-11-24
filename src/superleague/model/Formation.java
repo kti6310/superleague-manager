@@ -24,9 +24,9 @@ public enum Formation {
             new Slot("CM", Position.MF, Side.CENTER, 0.25, 0.48),
             new Slot("CM", Position.MF, Side.CENTER, 0.50, 0.54),
             new Slot("CM", Position.MF, Side.CENTER, 0.75, 0.48),
-            new Slot("LW", Position.FW, Side.LEFT, 0.15, 0.22),
+            new Slot("LW", Position.FW, Side.LEFT, 0.15, 0.17),
             new Slot("ST", Position.FW, Side.CENTER, 0.50, 0.15),
-            new Slot("RW", Position.FW, Side.RIGHT, 0.85, 0.22))),
+            new Slot("RW", Position.FW, Side.RIGHT, 0.85, 0.17))),
     F4_2_3_1("4-2-3-1", List.of(
             Slot.gk(),
             new Slot("LB", Position.DF, Side.LEFT, 0.12, 0.70),
@@ -60,9 +60,9 @@ public enum Formation {
             new Slot("CM", Position.MF, Side.CENTER, 0.37, 0.52),
             new Slot("CM", Position.MF, Side.CENTER, 0.63, 0.52),
             new Slot("RM", Position.MF, Side.RIGHT, 0.90, 0.48),
-            new Slot("LW", Position.FW, Side.LEFT, 0.18, 0.20),
+            new Slot("LW", Position.FW, Side.LEFT, 0.18, 0.16),
             new Slot("ST", Position.FW, Side.CENTER, 0.50, 0.15),
-            new Slot("RW", Position.FW, Side.RIGHT, 0.82, 0.20))),
+            new Slot("RW", Position.FW, Side.RIGHT, 0.82, 0.16))),
     F4_1_4_1("4-1-4-1", List.of(
             Slot.gk(),
             new Slot("LB", Position.DF, Side.LEFT, 0.12, 0.70),
@@ -84,9 +84,9 @@ public enum Formation {
             new Slot("DM", Position.MF, Side.CENTER, 0.50, 0.58),
             new Slot("CM", Position.MF, Side.CENTER, 0.30, 0.44),
             new Slot("CM", Position.MF, Side.CENTER, 0.70, 0.44),
-            new Slot("LW", Position.FW, Side.LEFT, 0.15, 0.22),
+            new Slot("LW", Position.FW, Side.LEFT, 0.15, 0.17),
             new Slot("ST", Position.FW, Side.CENTER, 0.50, 0.15),
-            new Slot("RW", Position.FW, Side.RIGHT, 0.85, 0.22))),
+            new Slot("RW", Position.FW, Side.RIGHT, 0.85, 0.17))),
     F4_4_2_DIAMOND("4-4-2 다이아몬드", List.of(
             Slot.gk(),
             new Slot("LB", Position.DF, Side.LEFT, 0.12, 0.70),
@@ -169,8 +169,8 @@ public enum Formation {
                 {0.76, new String[]{"LB", "CB", "CB", "CB", "RB"}},
                 {0.61, new String[]{"LWB", "DM", "DM", "DM", "RWB"}},
                 {0.47, new String[]{"LM", "CM", "CM", "CM", "RM"}},
-                {0.345, new String[]{"LW", "AM", "AM", "AM", "RW"}},
-                {0.25, new String[]{null, "LF", "CF", "RF", null}},
+                {0.345, new String[]{"LAM", "AM", "AM", "AM", "RAM"}},
+                {0.22, new String[]{"LW", "LF", "CF", "RF", "RW"}},
                 {0.15, new String[]{null, "ST", "ST", "ST", null}}};
         List<Slot> dots = new java.util.ArrayList<>();
         for (Object[] row : rows) {

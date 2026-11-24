@@ -570,7 +570,7 @@ class TacticsPanel extends JPanel {
             }
             Formation.Slot best = null;
             double bestD = 24;
-            for (Formation.Slot d : Formation.DOTS) {
+            for (Formation.Slot d : team.dropTargets()) {
                 double dist = Math.hypot(mx - px(d.x()), my - py(d.y()));
                 if (dist < bestD && !occupied(d, from)) {
                     bestD = dist;
@@ -632,7 +632,7 @@ class TacticsPanel extends JPanel {
             List<Formation.Slot> slots = team.slots();
             int target = dragging ? slotAt(dragAt.x, dragAt.y) : -1;
             Formation.Slot dropDot = dragging && target < 0 ? dotAt(dragAt.x, dragAt.y, dragFrom) : null;
-            for (Formation.Slot d : Formation.DOTS) {
+            for (Formation.Slot d : team.dropTargets()) {
                 if (occupied(d, dragging ? dragFrom : -1)) {
                     continue;
                 }

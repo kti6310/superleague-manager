@@ -70,7 +70,7 @@ final class LiveMatchDialog extends JDialog {
     private final JButton closeButton = Theme.primaryButton("닫기");
     private final JButton pauseButton = Theme.secondaryButton("일시정지");
     private final JButton subButton = Theme.primaryButton("선수 교체");
-    private final JButton tacticButton = Theme.secondaryButton("전술 변경");
+    private final JButton tacticButton = Theme.secondaryButton("전술 · 교체");
     private final JLabel staminaList = Theme.label(" ", Font.PLAIN, 12, Theme.TEXT);
     private final Timer timer;
 
@@ -332,31 +332,74 @@ final class LiveMatchDialog extends JDialog {
     private void openTactics() {
         boolean wasPaused = paused;
         setPaused(true);
-        javax.swing.JComboBox<superleague.model.Tactic> tactic = new javax.swing.JComboBox<>(superleague.model.Tactic.values());
-        tactic.setSelectedItem(userTeam.tactic());
-        java.util.List<superleague.model.Instructions.Style> styles = new ArrayList<>(java.util.List.of(superleague.model.Instructions.Style.values()));
-        styles.remove(superleague.model.Instructions.Style.CUSTOM);
-        javax.swing.JComboBox<superleague.model.Instructions.Style> style = new javax.swing.JComboBox<>(
-                styles.toArray(new superleague.model.Instructions.Style[0]));
-        superleague.model.Instructions.Style current = superleague.model.Instructions.Style.of(userTeam.instructions());
-        style.setSelectedItem(current == superleague.model.Instructions.Style.CUSTOM ? superleague.model.Instructions.Style.BALANCED : current);
-        JPanel form = new JPanel(new GridLayout(0, 1, 0, 6));
-        form.add(Theme.label("경기 운영", Font.BOLD, 13, Theme.TEXT));
-        form.add(tactic);
-        form.add(Theme.label("팀 스타일 (압박·템포·라인·폭)", Font.BOLD, 13, Theme.TEXT));
-        form.add(style);
-        form.add(Theme.label("<html>바꾼 순간부터 남은 시간이 새 전술로 다시 계산됩니다.<br>경기가 끝나면 원래 전술로 돌아갑니다.</html>",
-                Font.PLAIN, 12, Theme.MUTED));
-        int ok = javax.swing.JOptionPane.showConfirmDialog(this, form, "경기 중 전술 변경",
-                javax.swing.JOptionPane.OK_CANCEL_OPTION, javax.swing.JOptionPane.PLAIN_MESSAGE);
-        if (ok == javax.swing.JOptionPane.OK_OPTION) {
-            boolean ht = lastStep[0] < 0;
-            if (live.changeTactic(userTeam, (superleague.model.Tactic) tactic.getSelectedItem(),
-                    (superleague.model.Instructions.Style) style.getSelectedItem(),
-                    ht ? 46 : lastStep[0], ht ? 0 : lastStep[1], lastKey)) {
-                applyLiveUpdate();
-            }
+        superleague.model.Team.Setup before = userTeam.saveSetup();
+        userTeam.setLineupLocked(true);
+        long subsBefore = events.stream().filter(e -> e.type() == MatchEvent.Type.SUB).count();
+        JDialog dialog = new JDialog(this, "경기 중 전술 · 교체", ModalityType.APPLICATION_MODAL);
+        superleague.model.Tactic[] values = superleague.model.Tactic.values();
+        String[] names = new String[values.length];
+        for (int i = 0; i < values.length; i++) {
+            names[i] = values[i].label();
         }
+        Widgets.Segmented mentality = new Widgets.Segmented(names, i -> userTeam.setTactic(values[i]));
+        mentality.setSelectedIndex(userTeam.tactic().ordinal());
+        TacticsPanel[] holder = new TacticsPanel[1];
+        holder[0] = new TacticsPanel(userTeam, () -> holder[0].refresh(true), mentality);
+        holder[0].refresh(true);
+        JLabel info = Theme.label(String.format("남은 교체 %d명 · 교체 기회 %d번  ·  후보 선수를 선발로 넣으면 교체로 처리됩니다."
+                        + " 포메이션·위치·역할·운영 변경은 횟수 제한 없이 됩니다.", live.subsLeft(userTeam), live.windowsLeft(userTeam)),
+                Font.PLAIN, 12, Theme.MUTED);
+        JButton cancel = Theme.secondaryButton("취소");
+        JButton apply = Theme.primaryButton("적용");
+        cancel.addActionListener(e -> {
+            userTeam.restoreSetup(before);
+            dialog.dispose();
+        });
+        apply.addActionListener(e -> {
+            boolean ht = lastStep[0] < 0;
+            String error = live.reorganize(userTeam, before, ht ? 46 : lastStep[0], ht ? 0 : lastStep[1], lastKey);
+            if (error != null) {
+                Dialogs.show(dialog, "적용할 수 없음", error, java.util.List.of("바꾼 내용을 경기 전 상태로 되돌렸습니다."),
+                        Dialogs.Tone.WARN, null, "확인");
+                holder[0].refresh(true);
+                return;
+            }
+            dialog.dispose();
+            result = live.result();
+            events = result.events();
+            long added = events.stream().filter(ev -> ev.type() == MatchEvent.Type.SUB).count() - subsBefore;
+            for (long k = 0; k < added && eventIndex < events.size(); k++) {
+                reveal(events.get(eventIndex++));
+            }
+            updateStats();
+            updateSubButton();
+            pitch.repaint();
+        });
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                userTeam.restoreSetup(before);
+            }
+        });
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttons.setOpaque(false);
+        buttons.add(cancel);
+        buttons.add(apply);
+        JPanel south = new JPanel(new BorderLayout());
+        south.setOpaque(false);
+        south.setBorder(BorderFactory.createEmptyBorder(10, 4, 0, 4));
+        south.add(info, BorderLayout.WEST);
+        south.add(buttons, BorderLayout.EAST);
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(Theme.BG);
+        root.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        root.add(holder[0], BorderLayout.CENTER);
+        root.add(south, BorderLayout.SOUTH);
+        dialog.setContentPane(root);
+        dialog.setSize(1180, 760);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+        userTeam.setLineupLocked(false);
         if (!wasPaused) {
             setPaused(false);
         }

@@ -21,8 +21,7 @@ public final class LiveMatch {
     private final Map<Team, Player[]> starters = new HashMap<>();
     private final Map<Team, Integer> subsUsed = new HashMap<>();
     private final Map<Team, Integer> windowsUsed = new HashMap<>();
-    private final Map<Team, Tactic> startTactic = new HashMap<>();
-    private final Map<Team, int[]> startInstructions = new HashMap<>();
+    private final Map<Team, Team.Setup> startSetup = new HashMap<>();
     private final Map<Player, int[]> played = new HashMap<>();
     private List<MatchEvent> events;
     private int possession;
@@ -45,9 +44,7 @@ public final class LiveMatch {
             starters.put(t, xi);
             subsUsed.put(t, 0);
             windowsUsed.put(t, 0);
-            startTactic.put(t, t.tactic());
-            Instructions in = t.instructions();
-            startInstructions.put(t, new int[]{in.pressing(), in.tempo(), in.line(), in.width()});
+            startSetup.put(t, t.saveSetup());
         }
         Commentary.Result r = engine.simulate(fixture, -1, 0, 0, 0, fitness(fixture.home(), 0), fitness(fixture.away(), 0));
         events = r.events();
@@ -170,6 +167,78 @@ public final class LiveMatch {
         return true;
     }
 
+    // Applies whatever the manager changed on the tactics board mid-match; new faces in the XI count as substitutions.
+    public String reorganize(Team team, Team.Setup before, int minute, int extra, int cut) {
+        if (finished) {
+            return "경기가 이미 끝났습니다.";
+        }
+        List<Player> oldXi = java.util.Arrays.stream(before.lineup()).filter(java.util.Objects::nonNull).toList();
+        List<Player> newXi = new ArrayList<>();
+        for (int i = 0; i < 11; i++) {
+            if (team.slotPlayer(i) != null) {
+                newXi.add(team.slotPlayer(i));
+            }
+        }
+        List<Player> in = newXi.stream().filter(p -> !oldXi.contains(p)).toList();
+        List<Player> out = oldXi.stream().filter(p -> !newXi.contains(p)).toList();
+        String error = null;
+        if (newXi.size() < 11) {
+            error = "선발 11명을 모두 채워야 합니다.";
+        } else if (!in.isEmpty() && windowsLeft(team) <= 0) {
+            error = "교체 기회 3번을 모두 썼습니다.";
+        } else if (in.size() > subsLeft(team)) {
+            error = "남은 교체 인원(" + subsLeft(team) + "명)보다 많이 바꿨습니다.";
+        } else if (in.stream().anyMatch(played::containsKey)) {
+            error = "이미 교체되어 나간 선수는 다시 들어올 수 없습니다.";
+        }
+        if (error != null) {
+            team.restoreSetup(before);
+            return error;
+        }
+        boolean shapeChanged = team.formation() != before.formation() || !team.slots().equals(slotsOf(before))
+                || team.tactic() != before.tactic()
+                || !java.util.Arrays.equals(before.lineup(), currentLineup(team));
+        if (in.isEmpty() && !shapeChanged
+                && team.instructions().pressing() == before.instructions()[0]
+                && team.instructions().tempo() == before.instructions()[1]
+                && team.instructions().line() == before.instructions()[2]
+                && team.instructions().width() == before.instructions()[3]) {
+            return null;
+        }
+        int clock = cut >= 450 && cut <= 459 ? 45 : Math.min(90, cut / 10);
+        MatchEvent.Side side = sideOf(team);
+        List<MatchEvent> added = new ArrayList<>();
+        for (int k = 0; k < in.size(); k++) {
+            Player o = out.get(k);
+            Player n = in.get(k);
+            played.get(o)[1] = clock;
+            played.put(n, new int[]{clock, 90});
+            added.add(new MatchEvent(minute, extra, side, MatchEvent.Type.SUB,
+                    String.format("교체: %s OUT, %s IN (%s)", o.name(), n.name(), team.name()), 0, 0, n, false));
+        }
+        if (!in.isEmpty()) {
+            subsUsed.merge(team, in.size(), Integer::sum);
+            windowsUsed.merge(team, 1, Integer::sum);
+        }
+        added.add(new MatchEvent(minute, extra, side, MatchEvent.Type.SUB,
+                String.format("전술 변경: %s · %s (%s)", team.formation().label(), team.tactic().label(), team.name()),
+                0, 0, null, false));
+        resimulate(cut, added);
+        return null;
+    }
+
+    private static List<Formation.Slot> slotsOf(Team.Setup s) {
+        return s.formation() == Formation.CUSTOM && s.customSlots() != null ? s.customSlots() : s.formation().slots();
+    }
+
+    private static Player[] currentLineup(Team team) {
+        Player[] xi = new Player[11];
+        for (int i = 0; i < 11; i++) {
+            xi[i] = team.slotPlayer(i);
+        }
+        return xi;
+    }
+
     private MatchEvent.Side sideOf(Team team) {
         return team == fixture.home() ? MatchEvent.Side.HOME : MatchEvent.Side.AWAY;
     }
@@ -232,13 +301,7 @@ public final class LiveMatch {
                     p.changeCondition(-(int) Math.round(MatchEngine.fatigueFor(team, p) * share));
                 }
             }
-            Player[] xi = entry.getValue();
-            for (int i = 0; i < xi.length; i++) {
-                team.setSlot(i, xi[i]);
-            }
-            team.setTactic(startTactic.get(team));
-            int[] in = startInstructions.get(team);
-            team.instructions().set(in[0], in[1], in[2], in[3]);
+            team.restoreSetup(startSetup.get(team));
         }
         return r;
     }

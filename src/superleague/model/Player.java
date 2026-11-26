@@ -57,6 +57,24 @@ public class Player {
         return out;
     }
 
+    private java.util.Map<String, Integer> detail;
+    private int detailKey;
+
+    // Detailed 1-20 attributes shown on the player card, scaled x10 so they sit on the same scale as rating.
+    public double detail(String name) {
+        int key = java.util.Objects.hash(rating, age, java.util.Arrays.hashCode(attributes()));
+        if (detail == null || key != detailKey) {
+            detail = new java.util.HashMap<>();
+            for (Attributes.Section sec : Attributes.sections(this)) {
+                for (int i = 0; i < sec.names().length; i++) {
+                    detail.putIfAbsent(sec.names()[i], sec.values()[i]);
+                }
+            }
+            detailKey = key;
+        }
+        return detail.getOrDefault(name, 10) * 10.0;
+    }
+
     public int attribute(int index) {
         return attributes()[index];
     }

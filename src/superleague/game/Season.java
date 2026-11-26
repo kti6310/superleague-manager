@@ -563,6 +563,7 @@ public class Season {
             MatchResult r;
             if (watcher != null && f.involves(userTeam)) {
                 LiveMatch live = engine.start(f);
+                live.setManual(userTeam);
                 watcher.accept(live);
                 r = live.finish();
             } else {
@@ -584,6 +585,7 @@ public class Season {
         }
 
         for (Team team : teams) {
+            team.squad().forEach(Player::passRound);
             String event = events.maybeTrigger(team);
             if (event != null && team == userTeam) {
                 news.add(event);
@@ -610,7 +612,6 @@ public class Season {
             if (team == userTeam && !trained.isEmpty()) {
                 news.add("개인 훈련: " + String.join(", ", trained));
             }
-            team.squad().forEach(Player::passRound);
             team.decayMorale();
             team.passPerkRound();
         }

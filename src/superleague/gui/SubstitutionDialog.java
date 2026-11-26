@@ -65,7 +65,8 @@ final class SubstitutionDialog extends JDialog {
                 Player in = pending.get(i);
                 String swap = in == null ? "" : " &nbsp;<font color='#2563EB'><b>→ " + in.name() + "</b></font>";
                 return String.format("<html><b>%s</b> &nbsp;%s <font color='#64748B'>%s · 능력 %d</font> &nbsp;%s%s</html>",
-                        s.name(), p.name(), p.positions(), p.rating(), staminaText(live.stamina(team, p, clock)), swap);
+                        s.name(), p.name(), p.positions(), p.rating(),
+                        live.isHurt(p) ? "<font color='#DC2626'><b>부상</b></font>" : staminaText(live.stamina(team, p, clock)), swap);
             }
         });
         bench.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -146,8 +147,15 @@ final class SubstitutionDialog extends JDialog {
         setSize(1000, 600);
         setLocationRelativeTo(parent);
         refreshPending();
-        slots.setSelectedIndex(10);
-        slots.ensureIndexIsVisible(10);
+        int first = 10;
+        for (int i = 0; i < 11; i++) {
+            if (team.slotPlayer(i) != null && live.isHurt(team.slotPlayer(i))) {
+                first = i;
+                break;
+            }
+        }
+        slots.setSelectedIndex(first);
+        slots.ensureIndexIsVisible(first);
     }
 
     static void show(Component parent, LiveMatch live, Team team, int clock, Consumer<Map<Integer, Player>> onSub) {

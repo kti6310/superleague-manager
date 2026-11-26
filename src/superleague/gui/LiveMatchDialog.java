@@ -323,7 +323,8 @@ final class LiveMatchDialog extends JDialog {
             Player p = userTeam.slotPlayer(i);
             if (p != null) {
                 sb.append("<b>").append(userTeam.slots().get(i).name()).append("</b> ").append(p.name()).append("<br>&nbsp;&nbsp;")
-                        .append(SubstitutionDialog.staminaText(live.stamina(userTeam, p, currentClock()))).append("<br>");
+                        .append(live.isHurt(p) ? "<font color='#DC2626'><b>부상</b></font>"
+                                : SubstitutionDialog.staminaText(live.stamina(userTeam, p, currentClock()))).append("<br>");
             }
         }
         staminaList.setText(sb.append("</html>").toString());
@@ -486,6 +487,12 @@ final class LiveMatchDialog extends JDialog {
             clock.setText(step[1] > 0 ? step[0] + "+" + step[1] + "'" : step[0] + "'");
             status.setText(step[0] <= 45 && stepKey < 459 ? "전반전" : "후반전");
         }
+        List<Player> injured = List.of();
+        if (live != null) {
+            injured = live.advance(stepKey);
+            result = live.result();
+            events = result.events();
+        }
         List<MatchEvent> fresh = new ArrayList<>();
         boolean goal = false;
         while (eventIndex < events.size() && key(events.get(eventIndex)) <= stepKey) {
@@ -495,6 +502,7 @@ final class LiveMatchDialog extends JDialog {
             if (e.type() == MatchEvent.Type.GOAL) {
                 goal = true;
                 pauseTicks = speed == 2 ? 10 : 16;
+                GoalBanner.show(getRootPane(), e, result.fixture(), events);
             } else if (e.type() == MatchEvent.Type.HALFTIME) {
                 pitch.switchSides();
                 kickoffNext = false;
@@ -517,6 +525,27 @@ final class LiveMatchDialog extends JDialog {
             kickoffNext = goal;
         }
         updateStats();
+        if (!injured.isEmpty()) {
+            injuryPrompt(injured);
+        }
+    }
+
+    private void injuryPrompt(List<Player> injured) {
+        setPaused(true);
+        String names = String.join(", ", injured.stream().map(Player::name).toList());
+        if (live.subsLeft(userTeam) > 0 && live.windowsLeft(userTeam) > 0) {
+            int answer = javax.swing.JOptionPane.showConfirmDialog(this,
+                    names + " 선수가 부상을 당했습니다.\n그대로 두면 팀 경기력이 떨어집니다. 지금 교체할까요?",
+                    "부상 발생", javax.swing.JOptionPane.YES_NO_OPTION, javax.swing.JOptionPane.WARNING_MESSAGE);
+            if (answer == javax.swing.JOptionPane.YES_OPTION) {
+                openSubstitution();
+            }
+        } else {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                    names + " 선수가 부상을 당했지만 남은 교체 카드가 없어 부상을 안고 뜁니다.",
+                    "부상 발생", javax.swing.JOptionPane.WARNING_MESSAGE);
+        }
+        setPaused(false);
     }
 
     private void finishNow() {
@@ -524,6 +553,11 @@ final class LiveMatchDialog extends JDialog {
             pitch.stop();
             dispose();
             return;
+        }
+        if (live != null) {
+            live.advance(Integer.MAX_VALUE);
+            result = live.result();
+            events = result.events();
         }
         while (eventIndex < events.size()) {
             reveal(events.get(eventIndex++));
@@ -702,6 +736,144 @@ final class LiveMatchDialog extends JDialog {
         @Override
         public Dimension getMaximumSize() {
             return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+        }
+    }
+
+    // Centre-screen "goal!" card on the glass pane; clicks pass through and it fades out by itself.
+    private static final class GoalBanner extends JComponent {
+        private final String title;
+        private final String call;
+        private final String detail;
+        private final String score;
+        private float alpha = 1f;
+
+        private GoalBanner(String title, String call, String detail, String score) {
+            this.title = title;
+            this.call = call;
+            this.detail = detail;
+            this.score = score;
+        }
+
+        static void show(javax.swing.JRootPane root, MatchEvent e, superleague.sim.Fixture f, List<MatchEvent> events) {
+            Team team = e.side() == MatchEvent.Side.HOME ? f.home() : f.away();
+            String who = e.player() == null ? team.name() : e.player().name();
+            String title = e.ownGoal() ? "자책골! " + who : "골! " + who + " 선수가 골을 넣었습니다!";
+            String detail = team.name() + (e.assist() != null && !e.ownGoal() ? " · 도움 " + e.assist().name() : "");
+            GoalBanner banner = new GoalBanner(title, situation(e, events), detail,
+                    f.home().name() + "  " + e.homeScore() + " : " + e.awayScore() + "  " + f.away().name());
+            root.setGlassPane(banner);
+            banner.setVisible(true);
+            long start = System.currentTimeMillis();
+            Timer fade = new Timer(40, null);
+            fade.addActionListener(ev -> {
+                long t = System.currentTimeMillis() - start;
+                banner.alpha = t < 3200 ? 1f : Math.max(0f, 1f - (t - 3200) / 700f);
+                banner.repaint();
+                if (banner.alpha <= 0f || root.getGlassPane() != banner) {
+                    fade.stop();
+                    if (root.getGlassPane() == banner) {
+                        banner.setVisible(false);
+                    }
+                }
+            });
+            fade.start();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setComposite(java.awt.AlphaComposite.SrcOver.derive(alpha));
+            Font big = Theme.font(Font.BOLD, 30);
+            Font small = Theme.font(Font.BOLD, 16);
+            Font callFont = Theme.font(Font.BOLD, 19);
+            int w = Math.max(Math.max(g2.getFontMetrics(big).stringWidth(title), g2.getFontMetrics(callFont).stringWidth(call)),
+                    g2.getFontMetrics(small).stringWidth(score)) + 80;
+            int h = 184;
+            int x = (getWidth() - w) / 2;
+            int y = (getHeight() - h) / 2;
+            g2.setColor(new Color(15, 23, 42, 235));
+            g2.fillRoundRect(x, y, w, h, 24, 24);
+            g2.setColor(new Color(0xF59E0B));
+            g2.setStroke(new java.awt.BasicStroke(3f));
+            g2.drawRoundRect(x, y, w, h, 24, 24);
+            center(g2, big, new Color(0xFBBF24), title, y + 52);
+            center(g2, callFont, Color.WHITE, call, y + 90);
+            center(g2, small, new Color(0xE2E8F0), score, y + 126);
+            center(g2, Theme.font(Font.PLAIN, 14), new Color(0x94A3B8), detail, y + 156);
+            g2.dispose();
+        }
+
+        // Caster's line for the moment: own goal, hat-trick, late winner/equaliser, sealer, comeback, opener, consolation.
+        static String situation(MatchEvent e, List<MatchEvent> events) {
+            boolean home = e.side() == MatchEvent.Side.HOME;
+            int us = home ? e.homeScore() : e.awayScore();
+            int them = home ? e.awayScore() : e.homeScore();
+            int before = us - 1 - them;
+            int after = us - them;
+            int minute = e.minute();
+            boolean late = minute >= 80;
+            int worst = 0;
+            int hat = 0;
+            for (MatchEvent x : events) {
+                if (x.order() > e.order() || x.type() != MatchEvent.Type.GOAL) {
+                    continue;
+                }
+                int d = home ? x.homeScore() - x.awayScore() : x.awayScore() - x.homeScore();
+                if (x != e) {
+                    worst = Math.min(worst, d);
+                }
+                if (!x.ownGoal() && x.player() == e.player()) {
+                    hat++;
+                }
+            }
+            java.util.Random r = new java.util.Random(e.order() * 31L + us * 7L + them);
+            if (e.ownGoal()) {
+                return pick(r, "치명적인 실수! 자책골이 나옵니다!", "믿을 수 없는 장면! 자기 골문으로 공이 빨려 들어갑니다!");
+            }
+            if (hat == 3) {
+                return pick(r, "해트트릭 달성! 오늘 경기의 주인공입니다!", "세 번째 골! 경기장을 완전히 지배합니다!");
+            }
+            if (late && before == 0 && after == 1) {
+                return pick(r, "중요한 순간에 팀을 구해내는 골을 터뜨립니다!", "경기 막판, 승부를 가르는 결승골!");
+            }
+            if (late && before == -1 && after == 0) {
+                return pick(r, "패배 직전의 팀을 구해내는 극적인 동점골!", "포기하지 않았습니다! 마지막에 균형을 맞춥니다!");
+            }
+            if (before == 0 && after == 1 && worst < 0) {
+                return pick(r, "드디어 역전에 성공합니다!", "끌려가던 경기를 뒤집습니다! 역전골!");
+            }
+            if (before == 1 && after == 2 && minute >= 70) {
+                return pick(r, "경기에 쐐기를 박습니다!", "사실상 승부를 결정짓는 추가골!");
+            }
+            if (after >= 3) {
+                return pick(r, "완전히 승기를 잡습니다! 대량 득점!", "상대를 무너뜨리는 골 퍼레이드!");
+            }
+            if (us == 1 && them == 0) {
+                return pick(r, "선제골! 팽팽하던 균형을 깨뜨립니다!", "먼저 웃는 쪽은 이 팀입니다! 선제골!");
+            }
+            if (before == 0 && after == 1) {
+                return pick(r, "다시 앞서 나가는 골!", "팽팽한 흐름 속에 리드를 가져옵니다!");
+            }
+            if (after == 0) {
+                return pick(r, "균형을 맞추는 동점골!", "따라붙습니다! 다시 원점입니다!");
+            }
+            if (after < 0) {
+                return late && after <= -2 ? "만회골이지만 갈 길이 멉니다."
+                        : pick(r, "추격의 불씨를 살리는 만회골!", "한 골 차로 따라붙습니다!");
+            }
+            return pick(r, "격차를 벌리는 추가골!", "리드를 더 벌립니다!");
+        }
+
+        private static String pick(java.util.Random r, String... lines) {
+            return lines[r.nextInt(lines.length)];
+        }
+
+        private void center(Graphics2D g2, Font f, Color c, String text, int baseline) {
+            g2.setFont(f);
+            g2.setColor(c);
+            g2.drawString(text, (getWidth() - g2.getFontMetrics().stringWidth(text)) / 2, baseline);
         }
     }
 }

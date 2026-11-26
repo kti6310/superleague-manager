@@ -300,16 +300,17 @@ public final class Commentary {
         if (duty == null) {
             duty = away.dutyOf(p);
         }
-        return base * (duty == null ? 1 : duty.assist) * p.attribute(superleague.model.Attributes.PASSING) / 150.0;
+        return base * (duty == null ? 1 : duty.assist) * MatchEngine.skill(p, "패스", 4, "시야", 3, "크로스", 3) / 150.0;
     }
 
     private double foulWeight(Player p) {
-        return switch (p.position()) {
+        double base = switch (p.position()) {
             case FW -> 1.0;
             case MF -> 2.5;
             case DF -> 3.0;
             case GK -> 0.1;
         };
+        return base * MatchEngine.skill(p, "적극성", 1, "승부욕", 1) / 150.0;
     }
 
     private int poisson(double lambda) {

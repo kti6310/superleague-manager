@@ -67,8 +67,12 @@ public final class Shootout {
         if (outfield.isEmpty()) {
             outfield.addAll(team.startingEleven());
         }
-        outfield.sort(Comparator.comparingInt((Player p) -> p.attribute(Attributes.SHOOTING)).reversed());
+        outfield.sort(Comparator.comparingDouble(Shootout::penalty).reversed());
         return outfield;
+    }
+
+    private static double penalty(Player p) {
+        return superleague.sim.MatchEngine.skill(p, "페널티킥", 3, "침착성", 2, "대담성", 1);
     }
 
     private static Player keeper(Team team) {
@@ -77,7 +81,8 @@ public final class Shootout {
     }
 
     private static boolean shoot(Random random, Player taker, Player keeper) {
-        double p = 0.75 + (taker.attribute(Attributes.SHOOTING) - 150) / 600.0 - (keeper.rating() - 160) / 800.0;
+        double save = superleague.sim.MatchEngine.skill(keeper, "반사 신경", 2, "일대일", 1);
+        double p = 0.75 + (penalty(taker) - 150) / 600.0 - (save - 160) / 800.0;
         return random.nextDouble() < Math.max(0.55, Math.min(0.92, p));
     }
 
